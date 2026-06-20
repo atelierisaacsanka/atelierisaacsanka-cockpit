@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Isaacsanka">
+<link rel="manifest" href="manifest.json">
+<title>Atelier Isaacsanka — Cockpit</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#F7F6F2;color:#111110;font-size:14px}
+#shell{display:flex;height:100vh;overflow:hidden}
+#sidebar{width:210px;flex-shrink:0;background:#fff;border-right:1px solid rgba(0,0,0,0.08);display:flex;flex-direction:column;overflow-y:auto}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#topbar{height:52px;border-bottom:1px solid rgba(0,0,0,0.08);display:flex;align-items:center;padding:0 20px;gap:10px;background:#fff;flex-shrink:0}
+#topbar-title{flex:1;font-size:15px;font-weight:500}
+#content{flex:1;overflow-y:auto;padding:20px}
+.sb-brand{padding:18px 14px 12px;border-bottom:1px solid rgba(0,0,0,0.08)}
+.sb-brand-name{font-size:15px;font-weight:500;letter-spacing:0.02em}
+.sb-brand-sub{font-size:10px;color:#A8A7A3;margin-top:2px;text-transform:uppercase;letter-spacing:0.06em}
+.sb-nav{padding:10px 6px;flex:1}
+.sb-section{font-size:9px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:#A8A7A3;padding:10px 8px 4px}
+.nav-btn{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;cursor:pointer;color:#6B6A66;font-size:13px;width:100%;background:none;border:none;text-align:left;font-family:'Inter',sans-serif}
+.nav-btn:hover{background:#F7F6F2;color:#111110}
+.nav-btn.active{background:#111110;color:#fff}
+.page{display:none}
+.page.active{display:block}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.card{background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:16px 18px;margin-bottom:14px}
+.card-title{font-size:10px;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;color:#A8A7A3;margin-bottom:12px}
+.metric{background:#F7F6F2;border-radius:8px;padding:13px 15px}
+.metric-label{font-size:11px;color:#6B6A66;margin-bottom:4px}
+.metric-value{font-size:21px;font-weight:500}
+.metric-sub{font-size:11px;color:#A8A7A3;margin-top:3px}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:500}
+.bg{background:#EAF3DE;color:#2D6A1F}
+.br{background:#FAEBEB;color:#8C2222}
+.ba{background:#FBF0DC;color:#7A4A0A}
+.bb{background:#E8F0FA;color:#1A4F8A}
+.bgr{background:#F7F6F2;color:#6B6A66;border:1px solid rgba(0,0,0,0.1)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;color:#A8A7A3;padding:0 0 8px;border-bottom:1px solid rgba(0,0,0,0.08)}
+td{padding:9px 0;border-bottom:1px solid rgba(0,0,0,0.06);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.td2{color:#6B6A66;font-size:12px}
+.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.kc{background:#F7F6F2;border-radius:8px;padding:10px}
+.kc-title{font-size:10px;font-weight:500;text-transform:uppercase;color:#A8A7A3;letter-spacing:0.07em;margin-bottom:8px}
+.ki{background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:7px;padding:9px 11px;margin-bottom:7px}
+.ki:last-child{margin-bottom:0}
+.ki-name{font-size:12px;font-weight:500;margin-bottom:3px}
+.ki-meta{font-size:11px;color:#6B6A66;line-height:1.5}
+.alert{border-radius:7px;padding:10px 13px;font-size:12px;margin-bottom:14px;line-height:1.5}
+.alert-a{background:#FBF0DC;color:#7A4A0A}
+.alert-g{background:#EAF3DE;color:#2D6A1F}
+.alert-r{background:#FAEBEB;color:#8C2222}
+.tl{display:flex;gap:12px;margin-bottom:12px}
+.tl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.tl-t{font-size:13px;font-weight:500}
+.tl-d{font-size:11px;color:#6B6A66;margin-top:1px}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.bar-lbl{width:85px;font-size:12px;color:#6B6A66;flex-shrink:0;text-align:right}
+.bar-track{flex:1;height:6px;background:rgba(0,0,0,0.08);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;background:#111110}
+.bar-val{width:55px;font-size:12px;font-weight:500;text-align:right;flex-shrink:0}
+.task{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid rgba(0,0,0,0.06);cursor:pointer}
+.task:last-child{border-bottom:none}
+.task-cb{width:16px;height:16px;border:1.5px solid rgba(0,0,0,0.2);border-radius:3px;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center}
+.task.done .task-cb{background:#111110;border-color:#111110}
+.task.done .task-text{text-decoration:line-through;color:#A8A7A3}
+.task-text{font-size:13px;flex:1}
+.cash-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.06);font-size:13px}
+.cash-row:last-child{border-bottom:none}
+.cp{color:#2D6A1F;font-weight:500}
+.cn{color:#8C2222;font-weight:500}
+.div{height:1px;background:rgba(0,0,0,0.07);margin:12px 0}
+.form-group{margin-bottom:12px}
+.form-label{font-size:11px;color:#6B6A66;margin-bottom:5px;display:block}
+.form-input{width:100%;padding:8px 11px;border:1px solid rgba(0,0,0,0.15);border-radius:7px;background:#fff;color:#111110;font-size:13px;font-family:'Inter',sans-serif}
+.form-input:focus{outline:none;border-color:#111110}
+select.form-input{cursor:pointer}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn{padding:7px 14px;border:1px solid rgba(0,0,0,0.15);border-radius:7px;background:transparent;cursor:pointer;font-size:12px;color:#6B6A66;font-family:'Inter',sans-serif;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:#F7F6F2}
+.btn.primary{background:#111110;color:#fff;border-color:#111110}
+.btn.primary:hover{background:#333}
+.btn.danger{color:#8C2222}
+.btn.danger:hover{background:#FAEBEB}
+.row-between{display:flex;justify-content:space-between;align-items:center}
+.row{display:flex;align-items:center;gap:8px}
+.gap{margin-top:14px}
+.sim-meter{height:5px;background:rgba(0,0,0,0.08);border-radius:3px;overflow:hidden;margin-top:8px}
+.sim-fill{height:100%;border-radius:3px;transition:width 0.3s,background 0.3s}
+.prod-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.prod-lbl{width:130px;font-size:12px;color:#6B6A66;flex-shrink:0}
+.prod-track{flex:1;height:5px;background:rgba(0,0,0,0.08);border-radius:3px;overflow:hidden}
+.prod-fill{height:100%;border-radius:3px;background:#111110}
+.prod-pct{font-size:11px;color:#6B6A66;width:28px;text-align:right;flex-shrink:0}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:14px;padding:22px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:15px;font-weight:500;margin-bottom:18px}
+.toast{position:fixed;bottom:20px;right:20px;background:#111110;color:#fff;padding:10px 16px;border-radius:7px;font-size:13px;z-index:200;opacity:0;transition:opacity 0.2s;pointer-events:none}
+.toast.show{opacity:1}
+#mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid rgba(0,0,0,0.08);padding:8px 0;z-index:50}
+@media(max-width:600px){
+  #mobile-nav{display:flex;justify-content:space-around}
+  #content{padding:14px;padding-bottom:75px}
+  .grid2,.grid4,.grid3,.kanban{grid-template-columns:1fr}
+  #sidebar{display:none}
+}
+.mnav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 10px;cursor:pointer;color:#A8A7A3;font-size:10px;background:none;border:none;font-family:'Inter',sans-serif}
+.mnav-btn.active{color:#111110}
+.tva-toggle{width:40px;height:22px;border-radius:11px;background:rgba(0,0,0,0.15);cursor:pointer;position:relative;transition:background 0.2s;flex-shrink:0;border:none;padding:0}
+.tva-knob{width:18px;height:18px;border-radius:50%;background:white;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+
+.btn-e{padding:3px 8px;border:none;border-radius:5px;background:#E8F0FA;color:#1A4F8A;cursor:pointer;font-size:11px;font-family:inherit;display:inline-flex;align-items:center}
+.btn-e:hover{background:#d0e4f7}
+.btn-x{padding:3px 8px;border:none;border-radius:5px;background:#FAEBEB;color:#8C2222;cursor:pointer;font-size:11px;font-family:inherit;display:inline-flex;align-items:center}
+.btn-x:hover{background:#f5d0d0}
+.er2{display:inline-flex;align-items:center;gap:3px;flex-shrink:0}
+.apibadge{display:inline-flex;align-items:center;font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px}
+.api-off{background:#F7F6F2;color:#6B6A66}
+.api-on{background:#EAF3DE;color:#2D6A1F}
+</style>
+</head>
+<body>
+<div id="shell">
+<div id="sidebar">
+  <div class="sb-brand">
+    <div class="sb-brand-name">Isaacsanka</div>
+    <div class="sb-brand-sub">Cockpit atelier</div>
+  </div>
+  <nav class="sb-nav">
+    <button class="nav-btn active" data-page="dashboard">&#9783; Vue d'ensemble</button>
+    <div class="sb-section">Finance</div>
+    <button class="nav-btn" data-page="tresorerie">&#9775; Trésorerie</button>
+    <button class="nav-btn" data-page="ventes">&#9650; Ventes</button>
+    <div class="sb-section">Atelier</div>
+    <button class="nav-btn" data-page="production">&#9864; Production</button>
+    <button class="nav-btn" data-page="stocks">&#8801; Stocks matières</button>
+    <button class="nav-btn" data-page="produits">&#9750; Produits &amp; marges</button>
+    <div class="sb-section">Commerce</div>
+    <button class="nav-btn" data-page="commandes">&#9634; Commandes</button>
+    <button class="nav-btn" data-page="b2b">&#9874; B2B &amp; devis</button>
+    <div class="sb-section">Pilotage</div>
+    <button class="nav-btn" data-page="simulateur">&#9654; Simulateur</button>
+    <button class="nav-btn" data-page="projets">&#9741; Projets</button>
+    <button class="nav-btn" data-page="calendrier">&#9776; Calendrier</button>
+    <button class="nav-btn" data-page="taches">&#10003; Tâches</button>
+    <div class="sb-section">Système</div>
+    <button class="nav-btn" data-page="parametres">&#9881; Paramètres</button>
+  </nav>
+  <div style="padding:12px 14px;border-top:1px solid rgba(0,0,0,0.08)">
+    <div style="font-size:10px;color:#A8A7A3">Trésorerie</div>
+    <div style="font-size:18px;font-weight:500;margin-top:2px" id="sb-cash">—</div>
+    <div style="height:3px;background:rgba(0,0,0,0.08);border-radius:2px;margin-top:7px;overflow:hidden">
+      <div id="sb-cash-bar" style="height:100%;border-radius:2px;transition:width 0.3s"></div>
+    </div>
+  </div>
+</div>
+<div id="main">
+  <div id="topbar">
+    <div id="topbar-title">Vue d'ensemble</div>
+    <span id="sync-indicator" style="font-size:11px;color:#A8A7A3;white-space:nowrap;margin-right:4px">● Local</span><button class="btn" onclick="exportCSV()">↓ Export CSV</button>
+    <button class="btn" onclick="exportPDF()">⎙ PDF</button>
+    <button class="btn primary" onclick="openModal('modal-add')">+ Ajouter</button>
+  </div>
+  <div id="content">
+
+    <div id="page-dashboard" class="page active">
+      <div id="dash-alert"></div>
+      <div class="grid4">
+        <div class="metric"><div class="metric-label">Trésorerie</div><div class="metric-value" id="d-cash">—</div><div class="metric-sub" id="d-cash-sub"></div></div>
+        <div class="metric"><div class="metric-label">CA ce mois</div><div class="metric-value" id="d-ca">—</div><div class="metric-sub" id="d-ca-sub"></div></div>
+        <div class="metric"><div class="metric-label">Commandes en cours</div><div class="metric-value" id="d-orders">—</div><div class="metric-sub" id="d-orders-sub"></div></div>
+        <div class="metric"><div class="metric-label">Pièces en prod.</div><div class="metric-value">23</div><div class="metric-sub">Collection été</div></div>
+      </div>
+      <div class="grid2">
+        <div class="card"><div class="card-title">Priorités semaine</div><div id="dash-tasks"></div></div>
+        <div class="card"><div class="card-title">Prochaines échéances</div><div id="dash-events"></div></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Objectifs CA mi-2027</div>
+          <div class="bar-row"><div class="bar-lbl">E-shop</div><div class="bar-track"><div class="bar-fill" style="width:18%"></div></div><div class="bar-val">5 400/30k</div></div>
+          <div class="bar-row"><div class="bar-lbl">Pop-ups</div><div class="bar-track"><div class="bar-fill" style="width:12%"></div></div><div class="bar-val">2 400/20k</div></div>
+          <div class="bar-row"><div class="bar-lbl">B2B</div><div class="bar-track"><div class="bar-fill" style="width:8%"></div></div><div class="bar-val">800/10k</div></div>
+          <div class="bar-row"><div class="bar-lbl">Semi-mesure</div><div class="bar-track"><div class="bar-fill" style="width:40%"></div></div><div class="bar-val">600/1,5k</div></div>
+        </div>
+        <div class="card"><div class="card-title">Production en cours</div><div id="dash-prod"></div></div>
+      </div>
+    </div>
+
+    <div id="page-tresorerie" class="page">
+      <div class="grid4">
+        <div class="metric"><div class="metric-label">Solde actuel</div><div class="metric-value" id="t-solde">—</div></div>
+        <div class="metric"><div class="metric-label">CA estimé drop juillet</div><div class="metric-value" style="color:#2D6A1F">+3 500 €</div></div>
+        <div class="metric"><div class="metric-label">Sorties prévues 30j</div><div class="metric-value" id="t-out" style="color:#8C2222">—</div></div>
+        <div class="metric"><div class="metric-label">Solde prévisionnel</div><div class="metric-value" id="t-prev">—</div></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="row-between" style="margin-bottom:12px"><div class="card-title" style="margin:0">Mouvements récents</div><button class="btn" style="font-size:11px;padding:4px 9px" onclick="openModal('modal-add')">+ Ajouter</button></div>
+          <div id="t-moves"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Sorties prévues</div>
+          <div id="t-planned"></div>
+          <div class="div"></div>
+          <div class="cash-row"><strong>Total</strong><strong class="cn" id="t-total-out">—</strong></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="row-between" style="margin-bottom:14px"><div class="card-title" style="margin:0">Simulation drop / événement</div></div>
+        <div class="grid3">
+          <div class="form-group"><label class="form-label">Coût production (€)</label><input class="form-input" type="number" id="sim-prod-i" value="650" oninput="updateSim()"></div>
+          <div class="form-group"><label class="form-label">CA estimé (€)</label><input class="form-input" type="number" id="sim-ca-i" value="3500" oninput="updateSim()"></div>
+          <div style="background:#F7F6F2;border-radius:8px;padding:12px">
+            <div style="font-size:11px;color:#6B6A66;margin-bottom:4px">Solde après opération</div>
+            <div style="font-size:20px;font-weight:500" id="sim-r">—</div>
+            <div style="font-size:11px;margin-top:3px" id="sim-v">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-ventes" class="page">
+      <div class="grid4">
+        <div class="metric"><div class="metric-label">CA total depuis création</div><div class="metric-value">74 000 €</div></div>
+        <div class="metric"><div class="metric-label">CA 2025 (ytd)</div><div class="metric-value">12 440 €</div></div>
+        <div class="metric"><div class="metric-label">Panier moyen</div><div class="metric-value">148 €</div></div>
+        <div class="metric"><div class="metric-label">Clients total</div><div class="metric-value">300+</div></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Ventes par canal — 2025</div>
+          <div class="bar-row"><div class="bar-lbl">E-shop</div><div class="bar-track"><div class="bar-fill" style="width:70%"></div></div><div class="bar-val">8 708 €</div></div>
+          <div class="bar-row"><div class="bar-lbl">Pop-ups</div><div class="bar-track"><div class="bar-fill" style="width:20%"></div></div><div class="bar-val">2 488 €</div></div>
+          <div class="bar-row"><div class="bar-lbl">B2B</div><div class="bar-track"><div class="bar-fill" style="width:6%"></div></div><div class="bar-val">746 €</div></div>
+          <div class="bar-row"><div class="bar-lbl">Semi-mesure</div><div class="bar-track"><div class="bar-fill" style="width:4%"></div></div><div class="bar-val">498 €</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Meilleures ventes</div>
+          <table><thead><tr><th>Pièce</th><th>Qté</th><th>CA</th></tr></thead>
+          <tbody>
+            <tr><td>Futal denim indigo</td><td>8</td><td>1 680 €</td></tr>
+            <tr><td>Surchemise ML</td><td>5</td><td>1 100 €</td></tr>
+            <tr><td>Jupe-short denim</td><td>4</td><td>720 €</td></tr>
+            <tr><td>Besace-tablier</td><td>3</td><td>420 €</td></tr>
+            <tr><td>Porte-clés</td><td>12</td><td>240 €</td></tr>
+          </tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-production" class="page">
+      <div class="grid4">
+        <div class="metric"><div class="metric-label">Total pièces</div><div class="metric-value" id="pd-tot">—</div></div>
+        <div class="metric"><div class="metric-label">À couper</div><div class="metric-value" id="pd-cup">—</div></div>
+        <div class="metric"><div class="metric-label">En couture</div><div class="metric-value" id="pd-sew">—</div></div>
+        <div class="metric"><div class="metric-label">Prêtes</div><div class="metric-value" id="pd-rdy">—</div></div>
+      </div>
+      <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="card-title" style="margin:0">Kanban atelier</div><button class="btn primary" style="font-size:12px;padding:6px 12px" onclick="openP(-1)">+ Pièce</button></div><div class="kanban" id="kb"></div></div>
+      <div class="card gap"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="card-title" style="margin:0">Couturières &amp; prestataires</div><button class="btn primary" style="font-size:12px;padding:6px 12px" onclick="openC(-1)">+ Ajouter</button></div><div id="cout-list"></div></div>
+    </div>
+
+    <div id="page-stocks" class="page">
+      <div class="grid4">
+        <div class="metric"><div class="metric-label">Références matières</div><div class="metric-value" id="st-nb">—</div></div>
+        <div class="metric"><div class="metric-label">Alertes bas</div><div class="metric-value" style="color:#7A4A0A" id="st-al">—</div></div>
+        <div class="metric"><div class="metric-label">Références mercerie</div><div class="metric-value" id="st-mn">—</div></div>
+        <div class="metric"><div class="metric-label">Alertes mercerie</div><div class="metric-value" style="color:#7A4A0A" id="st-ma">—</div></div>
+      </div>
+      <div class="grid2">
+        <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="card-title" style="margin:0">Matières</div><button class="btn primary" style="font-size:12px;padding:6px 12px" onclick="openM(-1)">+ Ajouter</button></div><div id="mat-list"></div></div>
+        <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="card-title" style="margin:0">Mercerie &amp; consommables</div><button class="btn primary" style="font-size:12px;padding:6px 12px" onclick="openMc(-1)">+ Ajouter</button></div><div id="merc-list"></div></div>
+      </div>
+    </div>
+
+    <div id="page-produits" class="page">
+      <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="card-title" style="margin:0">Fiches produits &amp; rentabilité</div><button class="btn primary" style="font-size:12px;padding:6px 12px" onclick="openPr(-1)">+ Ajouter</button></div><div id="prod-grid"></div></div>
+      <div class="card gap">
+        <div class="card-title">Calculateur coût de revient</div>
+        <div class="grid3">
+          <div class="form-group"><label class="form-label">Matière (€/pièce)</label><input class="form-input" type="number" id="cr-mat" value="28" oninput="calcCR()"></div>
+          <div class="form-group"><label class="form-label">Couture (€/pièce)</label><input class="form-input" type="number" id="cr-sew" value="25" oninput="calcCR()"></div>
+          <div class="form-group"><label class="form-label">Mercerie + finitions</label><input class="form-input" type="number" id="cr-merc" value="8" oninput="calcCR()"></div>
+          <div class="form-group"><label class="form-label">Emballage + envoi</label><input class="form-input" type="number" id="cr-pack" value="7" oninput="calcCR()"></div>
+          <div class="form-group"><label class="form-label">Prix de vente</label><input class="form-input" type="number" id="cr-price" value="200" oninput="calcCR()"></div>
+          <div style="background:#F7F6F2;border-radius:8px;padding:12px">
+            <div style="font-size:11px;color:#6B6A66;margin-bottom:4px">Coût · Marge</div>
+            <div style="font-size:18px;font-weight:500" id="cr-result">—</div>
+            <div class="sim-meter"><div class="sim-fill" id="cr-bar" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-commandes" class="page">
+      <div class="grid4">
+        <div class="metric"><div class="metric-label">Commandes actives</div><div class="metric-value" id="o-active">—</div></div>
+        <div class="metric"><div class="metric-label">À expédier</div><div class="metric-value" id="o-ship" style="color:#7A4A0A">—</div></div>
+        <div class="metric"><div class="metric-label">En préparation</div><div class="metric-value" id="o-prep">—</div></div>
+        <div class="metric"><div class="metric-label">Livrées ce mois</div><div class="metric-value">18</div></div>
+      </div>
+      <div class="card">
+        <div class="row-between" style="margin-bottom:12px"><div class="card-title" style="margin:0">Commandes</div><button class="btn primary" style="font-size:12px;padding:6px 12px" onclick="openCmd(-1)">+ Nouvelle</button></div>
+        <div id="orders-table"></div>
+      </div>
+    </div>
+
+    <div id="page-b2b" class="page">
+      <div class="grid4">
+        <div class="metric"><div class="metric-label">Devis en cours</div><div class="metric-value" id="b2b-ct">—</div></div>
+        <div class="metric"><div class="metric-label">CA B2B potentiel</div><div class="metric-value" id="b2b-ca">—</div></div>
+        <div class="metric"><div class="metric-label">Contrats signés</div><div class="metric-value" id="b2b-sg">—</div></div>
+        <div class="metric"><div class="metric-label">Partenaires actifs</div><div class="metric-value" id="b2b-pa">—</div></div>
+      </div>
+      <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="card-title" style="margin:0">Devis &amp; projets B2B</div><button class="btn primary" style="font-size:12px;padding:6px 12px" onclick="openB(-1)">+ Ajouter</button></div><div id="b2b-list"></div></div>
+      <div class="card gap">
+        <div class="card-title">Politique tarifaire B2B</div>
+        <div class="grid3">
+          <div class="metric"><div class="metric-label">Coefficient minimum</div><div class="metric-value">×2,5</div></div>
+          <div class="metric"><div class="metric-label">Minimum commande</div><div class="metric-value">10 pcs</div></div>
+          <div class="metric"><div class="metric-label">Délai livraison</div><div class="metric-value">4–6 sem.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-simulateur" class="page">
+      <div class="card" style="margin-bottom:14px">
+        <div class="row-between">
+          <div class="card-title" style="margin:0">Régime TVA</div>
+          <div class="row">
+            <span style="font-size:12px;color:#6B6A66">Franchise</span>
+            <button class="tva-toggle" id="tva-toggle" onclick="toggleTVA()"><div class="tva-knob" id="tva-knob"></div></button>
+            <span style="font-size:12px;color:#6B6A66">TVA 20%</span>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#6B6A66;margin-top:10px;line-height:1.7" id="tva-info">
+          <strong style="color:#2D6A1F">Franchise en base de TVA (régime actuel)</strong> — Tu ne collectes pas de TVA. Ton prix affiché = ton encaissement réel. Tu paies la TVA sur tes achats sans la récupérer. Seuil de basculement : 85 000 € de CA annuel.
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">Coût de revient par pièce (commun aux 3 scénarios)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1.2fr;gap:12px;align-items:start">
+          <div><label class="form-label">Matière TTC (€)</label><input class="form-input" type="number" id="g-mat" value="28" oninput="runAllSim()"></div>
+          <div><label class="form-label">Couture (€)</label><input class="form-input" type="number" id="g-sew" value="25" oninput="runAllSim()"></div>
+          <div><label class="form-label">Mercerie (€)</label><input class="form-input" type="number" id="g-merc" value="8" oninput="runAllSim()"></div>
+          <div><label class="form-label">Patronage (€)</label><input class="form-input" type="number" id="g-time" value="0" oninput="runAllSim()"></div>
+          <div style="background:#F7F6F2;border-radius:8px;padding:12px;text-align:center">
+            <div style="font-size:10px;color:#6B6A66;margin-bottom:4px">Coût de revient/pièce</div>
+            <div style="font-size:22px;font-weight:500" id="g-cr-val">—</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;margin-bottom:14px">
+        <div class="card" style="border-top:3px solid #111110;margin-bottom:0">
+          <div style="font-size:9px;font-weight:500;text-transform:uppercase;color:#A8A7A3;margin-bottom:6px;letter-spacing:0.1em">Scénario A</div>
+          <div class="form-group"><input class="form-input" id="sA-name" value="Drop e-shop juillet" style="font-weight:500"></div>
+          <div class="form-group"><label class="form-label">Canal</label><select class="form-input" id="sA-canal" onchange="runAllSim()"><option value="eshop">E-shop</option><option value="popup">Pop-up</option><option value="wholesale">B2B wholesale</option><option value="depot">Dépôt-vente</option><option value="semimesure">Semi-mesure</option></select></div>
+          <div class="form-group"><label class="form-label">Nombre de pièces</label><input class="form-input" type="number" id="sA-qty" value="20" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Prix affiché/pièce (€)</label><input class="form-input" type="number" id="sA-price" value="210" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Emballage + envoi/pièce (€)</label><input class="form-input" type="number" id="sA-pack" value="7" oninput="runAllSim()"></div>
+          <div id="sA-comm-group" style="display:none" class="form-group"><label class="form-label">Remise/commission (%)</label><input class="form-input" type="number" id="sA-comm" value="40" oninput="runAllSim()"></div>
+          <div style="font-size:10px;font-weight:500;text-transform:uppercase;color:#A8A7A3;margin:10px 0 8px;letter-spacing:0.07em">Marketing &amp; charges</div>
+          <div class="form-group"><label class="form-label">Shooting / contenu (€)</label><input class="form-input" type="number" id="sA-shoot" value="150" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Publicité Meta/Instagram (€)</label><input class="form-input" type="number" id="sA-ads" value="80" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Plateforme Shopify (€)</label><input class="form-input" type="number" id="sA-platform" value="39" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Transport (€)</label><input class="form-input" type="number" id="sA-transport" value="0" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Stand / location (€)</label><input class="form-input" type="number" id="sA-stand" value="0" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Autres charges fixes (€)</label><input class="form-input" type="number" id="sA-other" value="0" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Taux de vente estimé (%)</label><input class="form-input" type="number" id="sA-sell" value="85" oninput="runAllSim()"></div>
+          <div id="sA-result"></div>
+        </div>
+        <div class="card" style="border-top:3px solid #1A4F8A;margin-bottom:0">
+          <div style="font-size:9px;font-weight:500;text-transform:uppercase;color:#A8A7A3;margin-bottom:6px;letter-spacing:0.1em">Scénario B</div>
+          <div class="form-group"><input class="form-input" id="sB-name" value="Pop-up Paris sept." style="font-weight:500"></div>
+          <div class="form-group"><label class="form-label">Canal</label><select class="form-input" id="sB-canal" onchange="runAllSim()"><option value="eshop">E-shop</option><option value="popup" selected>Pop-up</option><option value="wholesale">B2B wholesale</option><option value="depot">Dépôt-vente</option><option value="semimesure">Semi-mesure</option></select></div>
+          <div class="form-group"><label class="form-label">Nombre de pièces</label><input class="form-input" type="number" id="sB-qty" value="30" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Prix affiché/pièce (€)</label><input class="form-input" type="number" id="sB-price" value="200" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Emballage + envoi/pièce (€)</label><input class="form-input" type="number" id="sB-pack" value="3" oninput="runAllSim()"></div>
+          <div id="sB-comm-group" style="display:none" class="form-group"><label class="form-label">Remise/commission (%)</label><input class="form-input" type="number" id="sB-comm" value="40" oninput="runAllSim()"></div>
+          <div style="font-size:10px;font-weight:500;text-transform:uppercase;color:#A8A7A3;margin:10px 0 8px;letter-spacing:0.07em">Marketing &amp; charges</div>
+          <div class="form-group"><label class="form-label">Shooting / contenu (€)</label><input class="form-input" type="number" id="sB-shoot" value="200" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Publicité Meta/Instagram (€)</label><input class="form-input" type="number" id="sB-ads" value="150" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Plateforme (€)</label><input class="form-input" type="number" id="sB-platform" value="0" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Transport (€)</label><input class="form-input" type="number" id="sB-transport" value="350" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Stand / location (€)</label><input class="form-input" type="number" id="sB-stand" value="900" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Autres charges fixes (€)</label><input class="form-input" type="number" id="sB-other" value="0" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Taux de vente estimé (%)</label><input class="form-input" type="number" id="sB-sell" value="70" oninput="runAllSim()"></div>
+          <div id="sB-result"></div>
+        </div>
+        <div class="card" style="border-top:3px solid #7A4A0A;margin-bottom:0">
+          <div style="font-size:9px;font-weight:500;text-transform:uppercase;color:#A8A7A3;margin-bottom:6px;letter-spacing:0.1em">Scénario C</div>
+          <div class="form-group"><input class="form-input" id="sC-name" value="B2B Concept Store Lyon" style="font-weight:500"></div>
+          <div class="form-group"><label class="form-label">Canal</label><select class="form-input" id="sC-canal" onchange="runAllSim()"><option value="eshop">E-shop</option><option value="popup">Pop-up</option><option value="wholesale" selected>B2B wholesale</option><option value="depot">Dépôt-vente</option><option value="semimesure">Semi-mesure</option></select></div>
+          <div class="form-group"><label class="form-label">Nombre de pièces</label><input class="form-input" type="number" id="sC-qty" value="18" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Prix public/pièce (€)</label><input class="form-input" type="number" id="sC-price" value="300" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Emballage + envoi/pièce (€)</label><input class="form-input" type="number" id="sC-pack" value="4" oninput="runAllSim()"></div>
+          <div id="sC-comm-group" class="form-group"><label class="form-label">Remise wholesale (%)</label><input class="form-input" type="number" id="sC-comm" value="40" oninput="runAllSim()"></div>
+          <div style="font-size:10px;font-weight:500;text-transform:uppercase;color:#A8A7A3;margin:10px 0 8px;letter-spacing:0.07em">Marketing &amp; charges</div>
+          <div class="form-group"><label class="form-label">Lookbook / présentation (€)</label><input class="form-input" type="number" id="sC-shoot" value="100" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Prospection / déplacement (€)</label><input class="form-input" type="number" id="sC-ads" value="80" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Commission agent (€)</label><input class="form-input" type="number" id="sC-platform" value="0" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Transport livraison (€)</label><input class="form-input" type="number" id="sC-transport" value="40" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Showroom (€)</label><input class="form-input" type="number" id="sC-stand" value="0" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Autres charges fixes (€)</label><input class="form-input" type="number" id="sC-other" value="0" oninput="runAllSim()"></div>
+          <div class="form-group"><label class="form-label">Taux de vente (%)</label><input class="form-input" type="number" id="sC-sell" value="100" oninput="runAllSim()"></div>
+          <div id="sC-result"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="row-between" style="margin-bottom:12px"><div class="card-title" style="margin:0">Comparaison des 3 scénarios</div><button class="btn" onclick="saveBestProject()" style="font-size:11px">Sauvegarder le meilleur</button></div>
+        <div id="sim-comparison"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Prix de vente recommandé par canal</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+          <div><label class="form-label">Coût de revient/pièce (€)</label><input class="form-input" type="number" id="pr-cr" value="61" oninput="calcPrix()"></div>
+          <div><label class="form-label">Marge brute cible (%)</label><input class="form-input" type="number" id="pr-target" value="65" oninput="calcPrix()"><div style="font-size:10px;color:#A8A7A3;margin-top:3px">60–70% = standard premium</div></div>
+          <div><label class="form-label">Remise wholesale (%)</label><input class="form-input" type="number" id="pr-ws" value="40" oninput="calcPrix()"></div>
+          <div><label class="form-label">Commission dépôt-vente (%)</label><input class="form-input" type="number" id="pr-depot" value="30" oninput="calcPrix()"></div>
+        </div>
+        <div id="prix-result"></div>
+      </div>
+    </div>
+
+    <div id="page-projets" class="page">
+      <div class="card">
+        <div class="row-between" style="margin-bottom:12px"><div class="card-title" style="margin:0">Projets sauvegardés</div>
+          <div class="row"><button class="btn" onclick="exportProjectsCSV()" style="font-size:11px">Export CSV</button><button class="btn danger" onclick="clearProjects()" style="font-size:11px">Tout effacer</button></div>
+        </div>
+        <div id="projects-list"></div>
+      </div>
+    </div>
+
+    <div id="page-calendrier" class="page">
+      <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="card-title" style="margin:0">Échéances</div><button class="btn primary" style="font-size:12px;padding:6px 12px" onclick="openE(-1)">+ Ajouter</button></div><div id="evt-list"></div></div>
+    </div>
+
+    <div id="page-taches" class="page">
+      <div class="grid2">
+        <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="card-title" style="margin:0">Cette semaine</div><button class="btn primary" style="font-size:11px;padding:5px 10px" onclick="addTask()">+ Tâche</button></div><div id="task-list"></div></div>
+        <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="card-title" style="margin:0">À venir</div><button class="btn primary" style="font-size:11px;padding:5px 10px" onclick="addFutureTask()">+ Tâche</button></div><div id="future-task-list"></div></div>
+      </div>
+    </div>
+
+    <div id="page-parametres" class="page">
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">Connexions API</div>
+        <div style="border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:16px 18px;margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div><div style="font-size:14px;font-weight:500;margin-bottom:3px">Shopify</div><div style="font-size:12px;color:#6B6A66">Synchronise commandes, produits et CA e-shop</div></div>
+            <span class="apibadge api-off" id="sh-badge">Non connecté</span>
+          </div>
+          <div class="form-group"><label class="form-label">Nom boutique (sans .myshopify.com)</label><input class="form-input" id="sh-store" placeholder="ma-boutique"></div>
+          <div class="form-group"><label class="form-label">Access Token (Admin API)</label><input class="form-input" type="password" id="sh-key" placeholder="shpat_xxxxxxxx"><div style="font-size:10px;color:#A8A7A3;margin-top:3px">Shopify Admin → Apps → Develop apps → Admin API access token</div></div>
+          <div style="display:flex;gap:8px"><button class="btn primary" onclick="saveSH()">Sauvegarder</button><button class="btn" onclick="clearSH()" style="color:#8C2222">Déconnecter</button></div>
+        </div>
+        <div style="border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:16px 18px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div><div style="font-size:14px;font-weight:500;margin-bottom:3px">Banque — Open Banking (Powens)</div><div style="font-size:12px;color:#6B6A66">Synchronise tes transactions bancaires via PSD2</div></div>
+            <span class="apibadge api-off" id="bk-badge">Non connecté</span>
+          </div>
+          <div style="background:#F7F6F2;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:#6B6A66;line-height:1.7"><strong>Comment connecter :</strong><br>1. Crée un compte sur <strong>console.powens.com</strong> (sandbox gratuit)<br>2. Crée une application → copie Client ID et Client Secret<br>3. Colle-les ci-dessous · Pour la sync automatique, une Vercel Function est nécessaire.</div>
+          <div class="form-row"><div class="form-group"><label class="form-label">Client ID</label><input class="form-input" id="bk-id" placeholder="xxxxxxxx"></div><div class="form-group"><label class="form-label">Client Secret</label><input class="form-input" type="password" id="bk-secret" placeholder="xxxxxxxxxxxxxxxx"></div></div>
+          <div style="display:flex;gap:8px"><button class="btn primary" onclick="saveBK()">Sauvegarder</button><button class="btn" onclick="clearBK()" style="color:#8C2222">Déconnecter</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Gestion des données</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="background:#F7F6F2;border-radius:8px;padding:14px"><div style="font-size:13px;font-weight:500;margin-bottom:6px">Export complet</div><div style="font-size:12px;color:#6B6A66;margin-bottom:10px">Toutes tes données en CSV pour ton comptable.</div><button class="btn primary" onclick="exportAll()">Exporter tout</button></div>
+          <div style="background:#FAEBEB;border-radius:8px;padding:14px"><div style="font-size:13px;font-weight:500;margin-bottom:6px;color:#8C2222">Réinitialiser</div><div style="font-size:12px;color:#6B6A66;margin-bottom:10px">Efface tout et repart des données d'exemple. Irréversible.</div><button class="btn" onclick="resetAll()" style="color:#8C2222;border-color:#8C2222">Réinitialiser</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<div id="mobile-nav">
+  <button class="mnav-btn active" data-page="dashboard">&#9783;<span>Accueil</span></button>
+  <button class="mnav-btn" data-page="tresorerie">&#9775;<span>Tréso</span></button>
+  <button class="mnav-btn" data-page="simulateur">&#9654;<span>Simulateur</span></button>
+  <button class="mnav-btn" data-page="production">&#9864;<span>Atelier</span></button>
+  <button class="mnav-btn" data-page="projets">&#9741;<span>Projets</span></button>
+</div>
+
+<div id="modal-add" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-title">Ajouter un mouvement</div>
+    <div class="form-group"><label class="form-label">Type</label><select class="form-input" id="add-type"><option value="in">Entrée (vente, encaissement)</option><option value="out">Sortie (achat, prestataire)</option><option value="planned">Sortie prévue</option></select></div>
+    <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="add-desc" placeholder="Ex : Ventes e-shop 19 juin"></div>
+    <div class="form-group"><label class="form-label">Montant (€)</label><input class="form-input" type="number" id="add-amount" placeholder="0"></div>
+    <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="add-date"></div>
+    <div class="row" style="gap:10px;margin-top:4px">
+      <button class="btn" onclick="closeModal('modal-add')" style="flex:1;justify-content:center">Annuler</button>
+      <button class="btn primary" onclick="saveTransaction()" style="flex:1;justify-content:center">Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-order" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-title">Nouvelle commande</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Client</label><input class="form-input" id="o-client" placeholder="Prénom Nom"></div>
+      <div class="form-group"><label class="form-label">Pièce</label><input class="form-input" id="o-piece" placeholder="Ex : Futal denim M"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Montant (€)</label><input class="form-input" type="number" id="o-amount"></div>
+      <div class="form-group"><label class="form-label">Canal</label><select class="form-input" id="o-canal"><option>E-shop</option><option>Pop-up</option><option>B2B</option><option>Semi-mesure</option></select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Statut</label><select class="form-input" id="o-status"><option>En préparation</option><option>À expédier</option><option>Expédiée</option><option>Livrée</option></select></div>
+    <div class="row" style="gap:10px;margin-top:4px">
+      <button class="btn" onclick="closeModal('modal-order')" style="flex:1;justify-content:center">Annuler</button>
+      <button class="btn primary" onclick="saveOrder()" style="flex:1;justify-content:center">Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="mp" class="modal-overlay"><div class="modal">
+  <div class="modal-title" id="mp-t">Pièce</div><input type="hidden" id="mp-i" value="-1">
+  <div class="form-group"><label class="form-label">Nom</label><input class="form-input" id="mp-name" placeholder="Ex: Futal denim S/M/L"></div>
+  <div class="form-row"><div class="form-group"><label class="form-label">Unités</label><input class="form-input" type="number" id="mp-qty" value="1" min="1"></div><div class="form-group"><label class="form-label">Statut</label><select class="form-input" id="mp-st"><option value="couper">À couper</option><option value="couture">En couture</option><option value="qualite">Contrôle qualité</option><option value="pret">Prêt</option></select></div></div>
+  <div class="form-group"><label class="form-label">Matière</label><input class="form-input" id="mp-mat" placeholder="Ex: denim 12oz indigo"></div>
+  <div class="form-row"><div class="form-group"><label class="form-label">Prestataire</label><input class="form-input" id="mp-pre"></div><div class="form-group"><label class="form-label">Date rendu</label><input class="form-input" type="date" id="mp-dt"></div></div>
+  <div class="form-group"><label class="form-label">Priorité</label><select class="form-input" id="mp-pr"><option value="haute">Haute</option><option value="normale" selected>Normale</option><option value="basse">Basse</option></select></div>
+  <div class="form-group"><label class="form-label">🔗 Lien document (patron, fiche technique…)</label><input class="form-input" id="mp-lk" placeholder="https://drive.google.com/..."></div>
+  <div class="row" style="gap:10px;margin-top:4px"><button class="btn" onclick="closeAllModals()" style="flex:1;justify-content:center">Annuler</button><button class="btn primary" onclick="saveP()" style="flex:1;justify-content:center">Sauvegarder</button></div>
+</div></div>
+<div id="mc" class="modal-overlay"><div class="modal">
+  <div class="modal-title">Prestataire</div><input type="hidden" id="mc-i" value="-1">
+  <div class="form-group"><label class="form-label">Nom</label><input class="form-input" id="mc-name"></div>
+  <div class="form-group"><label class="form-label">En cours</label><input class="form-input" id="mc-ec"></div>
+  <div class="form-row"><div class="form-group"><label class="form-label">Date rendu</label><input class="form-input" type="date" id="mc-dt"></div><div class="form-group"><label class="form-label">Paiement</label><select class="form-input" id="mc-py"><option value="du">À payer</option><option value="ok">Payée</option><option value="dispo">Disponible</option></select></div></div>
+  <div class="form-group"><label class="form-label">Montant dû (€)</label><input class="form-input" type="number" id="mc-mt" value="0"></div>
+  <div class="row" style="gap:10px;margin-top:4px"><button class="btn" onclick="closeAllModals()" style="flex:1;justify-content:center">Annuler</button><button class="btn primary" onclick="saveC()" style="flex:1;justify-content:center">Sauvegarder</button></div>
+</div></div>
+<div id="mm" class="modal-overlay"><div class="modal">
+  <div class="modal-title" id="mm-t">Matière</div><input type="hidden" id="mm-i" value="-1">
+  <div class="form-group"><label class="form-label">Nom</label><input class="form-input" id="mm-name"></div>
+  <div class="form-row"><div class="form-group"><label class="form-label">Stock actuel</label><input class="form-input" id="mm-st"></div><div class="form-group"><label class="form-label">Seuil alerte</label><input class="form-input" id="mm-sl"></div></div>
+  <div class="form-group"><label class="form-label">Statut</label><select class="form-input" id="mm-s"><option value="ok">OK</option><option value="faible">Faible</option><option value="bas">Bas</option></select></div>
+  <div class="form-group"><label class="form-label">🖼 Lien image</label><input class="form-input" id="mm-img" placeholder="https://... (Google Photos, Imgur, Shopify)"></div>
+  <div class="row" style="gap:10px;margin-top:4px"><button class="btn" onclick="closeAllModals()" style="flex:1;justify-content:center">Annuler</button><button class="btn primary" onclick="saveM()" style="flex:1;justify-content:center">Sauvegarder</button></div>
+</div></div>
+<div id="mmc" class="modal-overlay"><div class="modal">
+  <div class="modal-title" id="mmc-t">Mercerie</div><input type="hidden" id="mmc-i" value="-1">
+  <div class="form-group"><label class="form-label">Nom</label><input class="form-input" id="mmc-name"></div>
+  <div class="form-row"><div class="form-group"><label class="form-label">Stock actuel</label><input class="form-input" id="mmc-st"></div><div class="form-group"><label class="form-label">Statut</label><select class="form-input" id="mmc-s"><option value="ok">OK</option><option value="faible">Faible</option><option value="bas">Bas</option></select></div></div>
+  <div class="row" style="gap:10px;margin-top:4px"><button class="btn" onclick="closeAllModals()" style="flex:1;justify-content:center">Annuler</button><button class="btn primary" onclick="saveMc()" style="flex:1;justify-content:center">Sauvegarder</button></div>
+</div></div>
+<div id="mpr" class="modal-overlay"><div class="modal">
+  <div class="modal-title" id="mpr-t">Fiche produit</div><input type="hidden" id="mpr-i" value="-1">
+  <div class="form-group"><label class="form-label">Nom</label><input class="form-input" id="mpr-name"></div>
+  <div class="form-row"><div class="form-group"><label class="form-label">Catégorie</label><select class="form-input" id="mpr-cat"><option value="coeur">Cœur de gamme</option><option value="accessoire">Accessoire</option><option value="test">Test/prototype</option><option value="rd">R&D</option></select></div><div class="form-group"><label class="form-label">Statut</label><select class="form-input" id="mpr-st"><option value="actif">Actif</option><option value="prototype">Prototype</option><option value="pause">En pause</option><option value="rd">R&D</option></select></div></div>
+  <div class="form-row"><div class="form-group"><label class="form-label">Prix de vente (€)</label><input class="form-input" type="number" id="mpr-px"></div><div class="form-group"><label class="form-label">Coût production (€)</label><input class="form-input" type="number" id="mpr-co"></div></div>
+  <div class="form-group"><label class="form-label">🖼 Lien image</label><input class="form-input" id="mpr-img" placeholder="https://... (Shopify: clic droit sur la photo > Copier l'adresse)"></div>
+  <div class="row" style="gap:10px;margin-top:4px"><button class="btn" onclick="closeAllModals()" style="flex:1;justify-content:center">Annuler</button><button class="btn primary" onclick="savePr()" style="flex:1;justify-content:center">Sauvegarder</button></div>
+</div></div>
+<div id="mb" class="modal-overlay"><div class="modal">
+  <div class="modal-title" id="mb-t">Projet B2B</div><input type="hidden" id="mb-i" value="-1">
+  <div class="form-group"><label class="form-label">Partenaire</label><input class="form-input" id="mb-name"></div>
+  <div class="form-row"><div class="form-group"><label class="form-label">Type</label><select class="form-input" id="mb-ty"><option>Wholesale</option><option>Dépôt-vente</option><option>Collab habillage</option><option>Événement</option><option>Autre</option></select></div><div class="form-group"><label class="form-label">Montant (€)</label><input class="form-input" type="number" id="mb-am"></div></div>
+  <div class="form-row"><div class="form-group"><label class="form-label">Statut</label><select class="form-input" id="mb-st"><option>En discussion</option><option>Devis envoyé</option><option>Négociation</option><option>Signé</option><option>Partenaire actif</option><option>Perdu</option></select></div><div class="form-group"><label class="form-label">Date relance</label><input class="form-input" type="date" id="mb-re"></div></div>
+  <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="mb-no"></div>
+  <div class="form-group"><label class="form-label">🔗 Lien dossier (devis, contrat, lookbook…)</label><input class="form-input" id="mb-lk" placeholder="https://drive.google.com/..."></div>
+  <div class="row" style="gap:10px;margin-top:4px"><button class="btn" onclick="closeAllModals()" style="flex:1;justify-content:center">Annuler</button><button class="btn primary" onclick="saveB()" style="flex:1;justify-content:center">Sauvegarder</button></div>
+</div></div>
+<div id="me" class="modal-overlay"><div class="modal">
+  <div class="modal-title" id="me-t">Échéance</div><input type="hidden" id="me-i" value="-1">
+  <div class="form-group"><label class="form-label">Titre</label><input class="form-input" id="me-ti"></div>
+  <div class="form-row"><div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="me-dt"></div><div class="form-group"><label class="form-label">Urgence</label><select class="form-input" id="me-ur"><option value="urgent">Urgent (rouge)</option><option value="soon">Bientôt (orange)</option><option value="ok">Planifié (vert)</option><option value="future">À venir (gris)</option></select></div></div>
+  <div class="form-group"><label class="form-label">Détail</label><input class="form-input" id="me-de"></div>
+  <div class="row" style="gap:10px;margin-top:4px"><button class="btn" onclick="closeAllModals()" style="flex:1;justify-content:center">Annuler</button><button class="btn primary" onclick="saveE()" style="flex:1;justify-content:center">Sauvegarder</button></div>
+</div></div>
+<div id="modal-cmd" class="modal-overlay"><div class="modal">
+  <div class="modal-title" id="modal-cmd-t">Commande</div><input type="hidden" id="cmd-i" value="-1">
+  <div class="form-row"><div class="form-group"><label class="form-label">Client</label><input class="form-input" id="cmd-client" placeholder="Prénom Nom"></div><div class="form-group"><label class="form-label">Pièce</label><input class="form-input" id="cmd-piece" placeholder="Ex: Futal denim M"></div></div>
+  <div class="form-row"><div class="form-group"><label class="form-label">Montant (€)</label><input class="form-input" type="number" id="cmd-amount"></div><div class="form-group"><label class="form-label">Canal</label><select class="form-input" id="cmd-canal"><option>E-shop</option><option>Pop-up</option><option>B2B</option><option>Semi-mesure</option></select></div></div>
+  <div class="form-group"><label class="form-label">Statut</label><select class="form-input" id="cmd-status"><option>En préparation</option><option>À expédier</option><option>Expédiée</option><option>Livrée</option></select></div>
+  <div class="row" style="gap:10px;margin-top:4px"><button class="btn" onclick="closeAllModals()" style="flex:1;justify-content:center">Annuler</button><button class="btn primary" onclick="saveCmd()" style="flex:1;justify-content:center">Sauvegarder</button></div>
+</div></div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+var TVA_ON = false;
+var TVA_RATE = 0.20;
+
+var DEFAULTS = {
+  cash: 2180,
+  transactions: [
+    {type:'in',desc:'Ventes e-shop 16 juin',amount:320,date:'2025-06-16'},
+    {type:'out',desc:'Denim 12oz Rondol',amount:180,date:'2025-06-15'},
+    {type:'in',desc:'Ventes e-shop 14 juin',amount:540,date:'2025-06-14'},
+    {type:'out',desc:'Couturière Fatima mai',amount:400,date:'2025-06-10'},
+    {type:'in',desc:'Pop-up Rennes juin',amount:810,date:'2025-06-08'},
+    {type:'out',desc:'Shopify',amount:39,date:'2025-06-01'}
+  ],
+  planned: [
+    {desc:'Couturière 25 juin',amount:400,date:'2025-06-25'},
+    {desc:'Mercerie réappro',amount:80,date:'2025-06-28'},
+    {desc:'Emballages drop juillet',amount:120,date:'2025-07-01'},
+    {desc:'Transport pop-up Paris',amount:350,date:'2025-09-24'},
+    {desc:'Location stand Paris',amount:900,date:'2025-09-26'},
+    {desc:'Shopify juillet',amount:39,date:'2025-07-01'}
+  ],
+  orders: [
+    {id:'#0241',client:'Sophie M.',piece:'Futal denim M',amount:210,canal:'E-shop',status:'À expédier'},
+    {id:'#0240',client:'Karim B.',piece:'Surchemise ML L',amount:220,canal:'E-shop',status:'À expédier'},
+    {id:'#0239',client:'Laura T.',piece:'Jupe-short S',amount:180,canal:'E-shop',status:'En préparation'},
+    {id:'#0238',client:'Marc D.',piece:'Futal denim S',amount:210,canal:'E-shop',status:'En préparation'},
+    {id:'#0237',client:'Inès R.',piece:'Besace-tablier',amount:140,canal:'E-shop',status:'Expédiée'}
+  ],
+  tasks: [
+    {text:'Finaliser patronage futal été',done:false,tag:'Urgent',tc:'br'},
+    {text:'Découpe 8 futals denim indigo',done:false,tag:'',tc:''},
+    {text:'Envoyer devis B2B Lyon',done:false,tag:'Ce soir',tc:'ba'},
+    {text:'Commander fil indigo',done:false,tag:'',tc:''},
+    {text:'Réappro denim 12oz Rondol',done:true,tag:'',tc:''},
+    {text:'Répondre DM IG boutique Nantes',done:true,tag:'',tc:''},
+    {text:'Brief contenu IG drop juillet',done:false,tag:'',tc:''},
+    {text:'Vérifier emballages kraft',done:false,tag:'',tc:''}
+  ],
+  projects: []
+};
+
+function lsGet(k){try{var v=localStorage.getItem('isa_'+k);return v?JSON.parse(v):null;}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem('isa_'+k,JSON.stringify(v));}catch(e){}}
+
+var S = {
+  cash: lsGet('cash') !== null ? lsGet('cash') : DEFAULTS.cash,
+  transactions: lsGet('transactions') || DEFAULTS.transactions,
+  planned: lsGet('planned') || DEFAULTS.planned,
+  orders: lsGet('orders') || DEFAULTS.orders,
+  tasks: lsGet('tasks') || DEFAULTS.tasks,
+  projects: lsGet('projects') || DEFAULTS.projects
+};
+
+function persist(){Object.keys(S).forEach(function(k){lsSet(k,S[k]);});}
+
+function fmt(n){return Math.round(n).toLocaleString('fr-FR')+' €';}
+
+// ── NAVIGATION ──────────────────────────────────────────
+var PAGE_TITLES = {
+  dashboard:'Vue d\'ensemble',tresorerie:'Trésorerie',ventes:'Ventes',
+  production:'Production',stocks:'Stocks matières',produits:'Produits & marges',
+  commandes:'Commandes',b2b:'B2B & devis',simulateur:'Simulateur de viabilité',
+  projets:'Projets sauvegardés',calendrier:'Calendrier',taches:'Tâches'
+};
+
+function goTo(page) {
+  var btns = document.querySelectorAll('.nav-btn, .mnav-btn');
+  for(var i=0;i<btns.length;i++){btns[i].classList.remove('active');}
+  var targets = document.querySelectorAll('[data-page="'+page+'"]');
+  for(var i=0;i<targets.length;i++){targets[i].classList.add('active');}
+  var pages = document.querySelectorAll('.page');
+  for(var i=0;i<pages.length;i++){pages[i].classList.remove('active');}
+  var el = document.getElementById('page-'+page);
+  if(el) el.classList.add('active');
+  var t = document.getElementById('topbar-title');
+  if(t) t.textContent = PAGE_TITLES[page] || page;
+  if(page==='dashboard') renderDashboard();
+  if(page==='tresorerie') renderTresorerie();
+  if(page==='commandes') renderCommandes();
+  if(page==='taches') renderTasks();
+  if(page==='projets') renderProjects();
+  if(page==='simulateur') runAllSim();
+  if(page==='produits') calcCR();
+}
+
+// ── SIDEBAR CASH ────────────────────────────────────────
+function updateSidebar() {
+  var c = S.cash;
+  var el = document.getElementById('sb-cash');
+  if(el) { el.textContent = fmt(c); el.style.color = c<1500?'#8C2222':c<2500?'#7A4A0A':'#2D6A1F'; }
+  var bar = document.getElementById('sb-cash-bar');
+  if(bar) { bar.style.width = Math.min(100,Math.max(0,(c/5000)*100))+'%'; bar.style.background = c<1500?'#8C2222':c<2500?'#7A4A0A':'#2D6A1F'; }
+}
+
+// ── DASHBOARD ───────────────────────────────────────────
+function renderDashboard() {
+  var el;
+  el = document.getElementById('d-cash'); if(el){el.textContent=fmt(S.cash); el.style.color=S.cash<1500?'#8C2222':S.cash<2500?'#7A4A0A':'';}
+  el = document.getElementById('d-cash-sub'); if(el) el.textContent = S.cash<1500?'⚠ Seuil alerte atteint':'Trésorerie disponible';
+  var ca = S.transactions.filter(function(t){return t.type==='in';}).reduce(function(s,t){return s+t.amount;},0);
+  el = document.getElementById('d-ca'); if(el) el.textContent = fmt(ca);
+  el = document.getElementById('d-ca-sub'); if(el) el.textContent = 'Ce mois (saisies)';
+  var active = S.orders.filter(function(o){return o.status!=='Livrée';}).length;
+  var toShip = S.orders.filter(function(o){return o.status==='À expédier';}).length;
+  el = document.getElementById('d-orders'); if(el) el.textContent = active;
+  el = document.getElementById('d-orders-sub'); if(el) el.textContent = toShip+' à expédier';
+
+  var alert = document.getElementById('dash-alert');
+  if(alert) {
+    if(S.cash<1500) alert.innerHTML='<div class="alert alert-r">⚠ Trésorerie sous le seuil d\'alerte (1 500 €) — anticiper les encaissements en urgence.</div>';
+    else if(S.cash<2500) alert.innerHTML='<div class="alert alert-a">⚠ Trésorerie basse — '+fmt(S.cash)+' disponibles. Paiement couturière 400 € le 25 juin.</div>';
+    else alert.innerHTML='<div class="alert alert-g">✓ Trésorerie stable — '+fmt(S.cash)+' disponibles.</div>';
+  }
+
+  el = document.getElementById('dash-tasks');
+  if(el) el.innerHTML = S.tasks.slice(0,4).map(function(t){
+    return '<div class="task '+(t.done?'done':'')+'"><div class="task-cb">'+(t.done?'✓':'')+'</div><div class="task-text">'+t.text+(t.tag?' <span class="badge '+t.tc+'" style="margin-left:6px">'+t.tag+'</span>':'')+'</div></div>';
+  }).join('');
+
+  el = document.getElementById('dash-events');
+  if(el) el.innerHTML = '<div class="tl"><div class="tl-dot" style="background:#8C2222"></div><div><div class="tl-t">Paiement couturière</div><div class="tl-d">25 juin · 400 €</div></div></div><div class="tl"><div class="tl-dot" style="background:#7A4A0A"></div><div><div class="tl-t">Drop collection été</div><div class="tl-d">7 juillet · Objectif 3 500 €</div></div></div><div class="tl"><div class="tl-dot" style="background:#7A4A0A"></div><div><div class="tl-t">Pop-up Paris</div><div class="tl-d">26–28 sept · Objectif 5 000 €</div></div></div><div class="tl"><div class="tl-dot" style="background:#2D6A1F"></div><div><div class="tl-t">Arrivée stagiaire</div><div class="tl-d">Septembre 2025</div></div></div>';
+
+  el = document.getElementById('dash-prod');
+  if(el) el.innerHTML = '<div class="prod-row"><div class="prod-lbl">Futal denim</div><div class="prod-track"><div class="prod-fill" style="width:15%"></div></div><div class="prod-pct">15%</div></div><div class="prod-row"><div class="prod-lbl">Surchemise ML</div><div class="prod-track"><div class="prod-fill" style="width:55%"></div></div><div class="prod-pct">55%</div></div><div class="prod-row"><div class="prod-lbl">Jupe-short</div><div class="prod-track"><div class="prod-fill" style="width:55%"></div></div><div class="prod-pct">55%</div></div><div class="prod-row"><div class="prod-lbl">Besace-tablier</div><div class="prod-track"><div class="prod-fill" style="width:85%"></div></div><div class="prod-pct">85%</div></div><div class="prod-row"><div class="prod-lbl">Porte-clés</div><div class="prod-track"><div class="prod-fill" style="width:100%"></div></div><div class="prod-pct">100%</div></div>';
+}
+
+// ── TRÉSORERIE ──────────────────────────────────────────
+function renderTresorerie() {
+  var totalOut = S.planned.reduce(function(s,p){return s+p.amount;},0);
+  var prev = S.cash - totalOut + 3500;
+  var el;
+  el=document.getElementById('t-solde');if(el)el.textContent=fmt(S.cash);
+  el=document.getElementById('t-out');if(el)el.textContent='−'+fmt(totalOut);
+  el=document.getElementById('t-prev');if(el){el.textContent=fmt(prev);el.style.color=prev>2000?'#2D6A1F':prev>0?'#7A4A0A':'#8C2222';}
+  el=document.getElementById('t-moves');if(el)el.innerHTML=S.transactions.map(function(t){return '<div class="cash-row"><span>'+t.desc+'</span><span class="'+(t.type==='in'?'cp':'cn')+'">'+(t.type==='in'?'+':'−')+fmt(t.amount)+'</span></div>';}).join('');
+  el=document.getElementById('t-planned');if(el)el.innerHTML=S.planned.map(function(p){return '<div class="cash-row"><span>'+p.desc+'</span><span class="cn">−'+fmt(p.amount)+'</span></div>';}).join('');
+  el=document.getElementById('t-total-out');if(el)el.textContent='−'+fmt(totalOut);
+  updateSim();
+}
+
+function updateSim() {
+  var prod = parseFloat(document.getElementById('sim-prod-i').value)||0;
+  var ca = parseFloat(document.getElementById('sim-ca-i').value)||0;
+  var totalOut = S.planned.reduce(function(s,p){return s+p.amount;},0);
+  var result = S.cash - totalOut - prod + ca;
+  var el = document.getElementById('sim-r'); if(el){el.textContent=(result>=0?'+':'')+fmt(result);el.style.color=result>2000?'#2D6A1F':result>0?'#7A4A0A':'#8C2222';}
+  el = document.getElementById('sim-v'); if(el){el.textContent=result>2000?'✓ Faisable':result>0?'⚠ Limite':'✗ Non viable';el.style.color=result>2000?'#2D6A1F':result>0?'#7A4A0A':'#8C2222';}
+}
+
+// ── COMMANDES ───────────────────────────────────────────
+function renderCommandes() {
+  var active=S.orders.filter(function(o){return o.status!=='Livrée';}).length;
+  var ship=S.orders.filter(function(o){return o.status==='À expédier';}).length;
+  var prep=S.orders.filter(function(o){return o.status==='En préparation';}).length;
+  var el;
+  el=document.getElementById('o-active');if(el)el.textContent=active;
+  el=document.getElementById('o-ship');if(el)el.textContent=ship;
+  el=document.getElementById('o-prep');if(el)el.textContent=prep;
+  var sc={' À expédier':'ba','En préparation':'bb','Expédiée':'bg','Livrée':'bgr'};
+  el=document.getElementById('orders-table');
+  if(el) el.innerHTML='<table><thead><tr><th>#</th><th>Client</th><th>Pièce</th><th>Montant</th><th>Canal</th><th>Statut</th><th></th></tr></thead><tbody>'+S.orders.map(function(o,i){return '<tr><td class="td2">'+o.id+'</td><td>'+o.client+'</td><td class="td2">'+o.piece+'</td><td>'+fmt(o.amount)+'</td><td><span class="badge bgr">'+o.canal+'</span></td><td><span class="badge '+(sc[o.status]||'bgr')+'">'+o.status+'</span></td><td><button class="btn danger" onclick="delOrder('+i+')" style="font-size:10px;padding:2px 7px">✕</button></td></tr>';}).join('')+'</tbody></table>';
+}
+
+function delOrder(i){S.orders.splice(i,1);persist();renderCommandes();}
+
+// ── TÂCHES ──────────────────────────────────────────────
+function renderTasks() {
+  var el = document.getElementById('task-list');
+  if(!el) return;
+  el.innerHTML = S.tasks.map(function(t,i){
+    return '<div class="task '+(t.done?'done':'')+'" onclick="toggleTask('+i+')"><div class="task-cb">'+(t.done?'✓':'')+'</div><div class="task-text">'+t.text+(t.tag?' <span class="badge '+t.tc+'" style="margin-left:6px">'+t.tag+'</span>':'')+'</div></div>';
+  }).join('');
+}
+
+function toggleTask(i){S.tasks[i].done=!S.tasks[i].done;persist();renderTasks();}
+function addTask(){var t=prompt('Nouvelle tâche :');if(!t)return;S.tasks.unshift({text:t,done:false,tag:'',tc:''});persist();renderTasks();}
+
+// ── TVA ─────────────────────────────────────────────────
+function toggleTVA() {
+  TVA_ON = !TVA_ON;
+  var knob = document.getElementById('tva-knob');
+  var toggle = document.getElementById('tva-toggle');
+  var info = document.getElementById('tva-info');
+  if(knob) knob.style.left = TVA_ON ? '20px' : '2px';
+  if(toggle) toggle.style.background = TVA_ON ? '#1A4F8A' : 'rgba(0,0,0,0.15)';
+  if(info) info.innerHTML = TVA_ON ?
+    '<strong style="color:#1A4F8A">TVA réelle 20% activée</strong> — Tu collectes 20% de TVA sur tes ventes. Un prix TTC de 200 € = 166,67 € HT pour toi. Le simulateur recalcule automatiquement.' :
+    '<strong style="color:#2D6A1F">Franchise en base de TVA</strong> — Tu ne collectes pas de TVA. Ton prix affiché = ton encaissement réel. Tu paies la TVA sur tes achats sans la récupérer. Seuil : 85 000 € de CA annuel.';
+  runAllSim();
+  calcPrix();
+}
+
+// ── SIMULATEUR ──────────────────────────────────────────
+function gv(id){var el=document.getElementById(id);return el?parseFloat(el.value)||0:0;}
+
+function calcScene(prefix) {
+  var mat=gv('g-mat'),sew=gv('g-sew'),merc=gv('g-merc'),time=gv('g-time');
+  var crBase=mat+sew+merc+time;
+  var canal=document.getElementById(prefix+'-canal')?document.getElementById(prefix+'-canal').value:'eshop';
+  var qty=gv(prefix+'-qty'),price=gv(prefix+'-price'),pack=gv(prefix+'-pack'),comm=gv(prefix+'-comm'),sell=gv(prefix+'-sell');
+  var shoot=gv(prefix+'-shoot'),ads=gv(prefix+'-ads'),platform=gv(prefix+'-platform'),transport=gv(prefix+'-transport'),stand=gv(prefix+'-stand'),other=gv(prefix+'-other');
+  var totalFixed=shoot+ads+platform+transport+stand+other;
+  var priceNet=price;
+  if(TVA_ON) priceNet=price/(1+TVA_RATE);
+  var priceRec=priceNet;
+  if(canal==='wholesale'||canal==='depot') priceRec=priceNet*(1-comm/100);
+  var crUnit=crBase+pack;
+  var totalCost=(crUnit*qty)+totalFixed;
+  var sold=Math.round(qty*sell/100);
+  var ca=sold*priceRec;
+  var profit=ca-totalCost;
+  var margin=ca>0?(profit/ca*100):0;
+  var bep=(priceRec>crUnit)?Math.ceil(totalCost/(priceRec-crUnit)):9999;
+  var bepPct=qty>0?Math.min(100,(bep/qty)*100):100;
+  var labels={eshop:'E-shop',popup:'Pop-up',wholesale:'B2B wholesale',depot:'Dépôt-vente',semimesure:'Semi-mesure'};
+  return {qty:qty,price:price,priceRec:priceRec,crBase:crBase,crUnit:crUnit,pack:pack,totalFixed:totalFixed,totalCost:totalCost,ca:ca,profit:profit,margin:margin,bep:bep,bepPct:bepPct,sold:sold,sell:sell,canal:canal,canalLabel:labels[canal]||canal,comm:comm,TVA:TVA_ON};
+}
+
+function renderScene(prefix,r) {
+  var el=document.getElementById(prefix+'-result');
+  if(!el) return;
+  var vc=r.profit>0&&r.bepPct<70?'bg':r.profit>0?'ba':'br';
+  var vt=r.profit>0&&r.bepPct<70?'✓ Viable':r.profit>0?'⚠ Serré':'✗ Non viable';
+  var f=function(n){return Math.round(n).toLocaleString('fr-FR');};
+  el.innerHTML='<div style="border-top:1px solid rgba(0,0,0,0.07);padding-top:10px;margin-top:6px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px"><div style="background:#F7F6F2;border-radius:7px;padding:9px"><div style="font-size:10px;color:#6B6A66;margin-bottom:2px">Coût revient/pièce</div><div style="font-size:15px;font-weight:500">'+f(r.crUnit)+' €</div></div><div style="background:#F7F6F2;border-radius:7px;padding:9px"><div style="font-size:10px;color:#6B6A66;margin-bottom:2px">Prix encaissé/pièce</div><div style="font-size:15px;font-weight:500">'+f(r.priceRec)+' €</div></div><div style="background:#F7F6F2;border-radius:7px;padding:9px"><div style="font-size:10px;color:#6B6A66;margin-bottom:2px">Charges fixes + mktg</div><div style="font-size:15px;font-weight:500">'+f(r.totalFixed)+' €</div></div><div style="background:#F7F6F2;border-radius:7px;padding:9px"><div style="font-size:10px;color:#6B6A66;margin-bottom:2px">CA estimé</div><div style="font-size:15px;font-weight:500;color:#2D6A1F">'+f(r.ca)+' €</div></div></div><div style="background:#F7F6F2;border-radius:7px;padding:10px;margin-bottom:7px"><div style="display:flex;justify-content:space-between"><div><div style="font-size:10px;color:#6B6A66">Profit net</div><div style="font-size:18px;font-weight:500;color:'+(r.profit>=0?'#2D6A1F':'#8C2222')+'">'+(r.profit>=0?'+':'')+f(r.profit)+' €</div></div><div style="text-align:right"><div style="font-size:10px;color:#6B6A66">Marge nette</div><div style="font-size:18px;font-weight:500;color:'+(r.margin>50?'#2D6A1F':r.margin>25?'#7A4A0A':'#8C2222')+'">'+Math.round(r.margin)+'%</div></div></div><div class="sim-meter"><div class="sim-fill" style="width:'+Math.max(0,Math.min(100,r.margin))+'%;background:'+(r.margin>50?'#2D6A1F':r.margin>25?'#7A4A0A':'#8C2222')+'"></div></div></div><div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:11px;color:#6B6A66">Seuil : <strong>'+r.bep+' pièces</strong> ('+Math.round(r.bepPct)+'% du lot)</div><span class="badge '+vc+'">'+vt+'</span></div></div>';
+}
+
+function runAllSim() {
+  var mat=gv('g-mat'),sew=gv('g-sew'),merc=gv('g-merc'),time=gv('g-time');
+  var cr=mat+sew+merc+time;
+  var el=document.getElementById('g-cr-val');if(el)el.textContent=Math.round(cr)+' €';
+  ['A','B','C'].forEach(function(s){
+    var canal=document.getElementById('s'+s+'-canal')?document.getElementById('s'+s+'-canal').value:'eshop';
+    var cg=document.getElementById('s'+s+'-comm-group');
+    if(cg) cg.style.display=(canal==='wholesale'||canal==='depot')?'block':'none';
+  });
+  var rA=calcScene('sA'),rB=calcScene('sB'),rC=calcScene('sC');
+  renderScene('sA',rA);renderScene('sB',rB);renderScene('sC',rC);
+  renderComparison(rA,rB,rC);
+  calcPrix();
+}
+
+function renderComparison(rA,rB,rC) {
+  var el=document.getElementById('sim-comparison');if(!el)return;
+  var sc=[
+    {label:document.getElementById('sA-name')?document.getElementById('sA-name').value:'A',r:rA,color:'#111110'},
+    {label:document.getElementById('sB-name')?document.getElementById('sB-name').value:'B',r:rB,color:'#1A4F8A'},
+    {label:document.getElementById('sC-name')?document.getElementById('sC-name').value:'C',r:rC,color:'#7A4A0A'}
+  ];
+  var best=sc.reduce(function(b,s){return s.r.profit>b.r.profit?s:b;},sc[0]);
+  var f=function(n){return Math.round(n).toLocaleString('fr-FR');};
+  el.innerHTML='<table><thead><tr><th>Scénario</th><th>Canal</th><th>Coût total</th><th>Mktg</th><th>CA estimé</th><th>Profit</th><th>Marge</th><th>Seuil</th><th>Verdict</th></tr></thead><tbody>'+sc.map(function(s){
+    var vc=s.r.profit>0&&s.r.bepPct<70?'bg':s.r.profit>0?'ba':'br';
+    var vt=s.r.profit>0&&s.r.bepPct<70?'✓ Viable':s.r.profit>0?'⚠ Serré':'✗ Non viable';
+    return '<tr style="'+(s.label===best.label?'background:#EAF3DE':'')+'">'
+      +'<td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+s.color+';margin-right:5px"></span><strong>'+s.label+'</strong>'+(s.label===best.label?' <span class="badge bg" style="font-size:9px">Meilleur</span>':'')+'</td>'
+      +'<td class="td2">'+s.r.canalLabel+'</td>'
+      +'<td>'+f(s.r.totalCost)+' €</td>'
+      +'<td class="td2">'+f(s.r.totalFixed)+' €</td>'
+      +'<td style="color:#2D6A1F;font-weight:500">'+f(s.r.ca)+' €</td>'
+      +'<td style="font-weight:500;color:'+(s.r.profit>=0?'#2D6A1F':'#8C2222')+'">'+(s.r.profit>=0?'+':'')+f(s.r.profit)+' €</td>'
+      +'<td style="font-weight:500;color:'+(s.r.margin>50?'#2D6A1F':s.r.margin>25?'#7A4A0A':'#8C2222')+'">'+Math.round(s.r.margin)+'%</td>'
+      +'<td class="td2">'+s.r.bep+' pcs</td>'
+      +'<td><span class="badge '+vc+'">'+vt+'</span></td>'
+      +'</tr>';
+  }).join('')+'</tbody></table>';
+}
+
+function saveBestProject() {
+  var sc=['A','B','C'].map(function(s){var r=calcScene('s'+s);var el=document.getElementById('s'+s+'-name');return{name:el?el.value:'Scénario '+s,r:r};});
+  var best=sc.reduce(function(b,s){return s.r.profit>b.r.profit?s:b;},sc[0]);
+  var r=best.r;
+  S.projects.unshift({id:Date.now(),name:best.name,type:r.canalLabel,qty:r.qty,price:Math.round(r.price),totalCost:Math.round(r.totalCost),ca:Math.round(r.ca),profit:Math.round(r.profit),margin:Math.round(r.margin),bep:r.bep,sellRate:r.sell,marketing:Math.round(r.totalFixed),tva:TVA_ON?'20%':'Franchise',date:new Date().toLocaleDateString('fr-FR')});
+  persist();
+  toast('Projet "'+best.name+'" sauvegardé ✓');
+}
+
+function renderProjects() {
+  var el=document.getElementById('projects-list');if(!el)return;
+  if(!S.projects.length){el.innerHTML='<div style="padding:20px;text-align:center;color:#6B6A66;font-size:13px">Aucun projet. Utilise le simulateur pour créer et sauvegarder des projets.</div>';return;}
+  el.innerHTML=S.projects.map(function(p,i){
+    return '<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(0,0,0,0.06)">'
+      +'<div style="width:34px;height:34px;border-radius:7px;background:#F7F6F2;display:flex;align-items:center;justify-content:center;font-size:15px">'+(p.type==='E-shop'?'🛍':p.type==='Pop-up'?'🏪':p.type==='B2B wholesale'?'🤝':'📦')+'</div>'
+      +'<div style="flex:1"><div style="font-size:13px;font-weight:500">'+p.name+'</div><div style="font-size:11px;color:#6B6A66;margin-top:2px">'+p.type+' · '+p.qty+' pièces · '+p.date+'</div></div>'
+      +'<div style="text-align:right;flex-shrink:0"><div style="font-size:13px;font-weight:500;color:'+(p.profit>0?'#2D6A1F':'#8C2222')+'">'+(p.profit>=0?'+':'')+Math.round(p.profit).toLocaleString('fr-FR')+' €</div><div style="font-size:11px;color:#6B6A66">Marge '+p.margin+'% · Seuil '+p.bep+' pcs</div></div>'
+      +'<button class="btn danger" onclick="delProject('+i+')" style="font-size:10px;padding:4px 7px;margin-left:6px">✕</button>'
+      +'</div>';
+  }).join('');
+}
+
+function delProject(i){S.projects.splice(i,1);persist();renderProjects();}
+function clearProjects(){if(!confirm('Effacer tous les projets ?'))return;S.projects=[];persist();renderProjects();}
+
+// ── CALCULATEUR COÛT ────────────────────────────────────
+function calcCR() {
+  var mat=gv('cr-mat'),sew=gv('cr-sew'),merc=gv('cr-merc'),pack=gv('cr-pack'),price=gv('cr-price')||1;
+  var total=mat+sew+merc+pack;
+  var marge=Math.round((1-total/price)*100);
+  var el=document.getElementById('cr-result');if(el)el.textContent=Math.round(total)+' € · '+marge+'%';
+  var bar=document.getElementById('cr-bar');if(bar){bar.style.width=Math.max(0,marge)+'%';bar.style.background=marge>60?'#2D6A1F':marge>40?'#7A4A0A':'#8C2222';}
+}
+
+// ── PRIX RECOMMANDÉ ─────────────────────────────────────
+function calcPrix() {
+  var cr=gv('pr-cr')||61,target=gv('pr-target')||65,ws=gv('pr-ws')||40,depot=gv('pr-depot')||30;
+  var pMin=cr/(1-target/100);
+  var pTTC=TVA_ON?pMin*1.2:pMin;
+  var pWS=TVA_ON?(pMin/(1-ws/100))*1.2:pMin/(1-ws/100);
+  var pDepot=TVA_ON?(pMin/(1-depot/100))*1.2:pMin/(1-depot/100);
+  var f=function(n){return Math.round(n).toLocaleString('fr-FR');};
+  var el=document.getElementById('prix-result');if(!el)return;
+  el.innerHTML='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px"><div style="background:#F7F6F2;border-radius:8px;padding:12px"><div style="font-size:10px;color:#6B6A66;margin-bottom:5px">E-shop / Pop-up</div><div style="font-size:20px;font-weight:500">'+f(pTTC)+' €</div><div style="font-size:10px;color:#A8A7A3;margin-top:3px">Min pour '+target+'% de marge</div></div><div style="background:#F7F6F2;border-radius:8px;padding:12px"><div style="font-size:10px;color:#6B6A66;margin-bottom:5px">B2B Wholesale (−'+ws+'%)</div><div style="font-size:20px;font-weight:500">'+f(pWS)+' €</div><div style="font-size:10px;color:#A8A7A3;margin-top:3px">Prix catalogue minimum</div></div><div style="background:#F7F6F2;border-radius:8px;padding:12px"><div style="font-size:10px;color:#6B6A66;margin-bottom:5px">Dépôt-vente (−'+depot+'%)</div><div style="font-size:20px;font-weight:500">'+f(pDepot)+' €</div><div style="font-size:10px;color:#A8A7A3;margin-top:3px">Prix boutique minimum</div></div><div style="background:#111110;border-radius:8px;padding:12px;color:white"><div style="font-size:10px;color:rgba(255,255,255,0.6);margin-bottom:5px">Coût de revient</div><div style="font-size:20px;font-weight:500">'+f(cr)+' €</div><div style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:3px">Coeff ×'+((pTTC/cr).toFixed(1))+' en direct</div></div></div><div style="margin-top:10px;padding:10px 12px;background:#FBF0DC;border-radius:7px;font-size:12px;color:#7A4A0A">Règle : coefficient ×'+((pTTC/cr).toFixed(1))+' minimum en vente directe pour '+target+'% de marge'+(TVA_ON?' (TVA 20% incluse)':' (franchise TVA)')+'. Wholesale : ×'+((pWS/cr).toFixed(1))+' minimum sur le prix catalogue.</div>';
+}
+
+// ── TRANSACTIONS ────────────────────────────────────────
+function saveTransaction() {
+  var type=document.getElementById('add-type').value;
+  var desc=document.getElementById('add-desc').value;
+  var amount=parseFloat(document.getElementById('add-amount').value)||0;
+  var date=document.getElementById('add-date').value;
+  if(!desc||!amount){alert('Remplis tous les champs.');return;}
+  if(type==='planned'){S.planned.unshift({desc:desc,amount:amount,date:date});}
+  else{S.transactions.unshift({type:type==='in'?'in':'out',desc:desc,amount:amount,date:date});if(type==='in')S.cash+=amount;else S.cash-=amount;}
+  persist();closeModal('modal-add');updateSidebar();toast('Mouvement enregistré ✓');renderTresorerie();
+}
+
+function saveOrder() {
+  var client=document.getElementById('o-client').value;
+  var piece=document.getElementById('o-piece').value;
+  var amount=parseFloat(document.getElementById('o-amount').value)||0;
+  var canal=document.getElementById('o-canal').value;
+  var status=document.getElementById('o-status').value;
+  if(!client||!piece){alert('Remplis les champs obligatoires.');return;}
+  S.orders.unshift({id:'#'+String(S.orders.length+200),client:client,piece:piece,amount:amount,canal:canal,status:status});
+  persist();closeModal('modal-order');toast('Commande ajoutée ✓');renderCommandes();
+}
+
+// ── MODALS ──────────────────────────────────────────────
+function openModal(id){var el=document.getElementById(id);if(el)el.classList.add('open');}
+function closeModal(id){var el=document.getElementById(id);if(el)el.classList.remove('open');}
+
+// ── TOAST ───────────────────────────────────────────────
+function toast(msg){var el=document.getElementById('toast');if(!el)return;el.textContent=msg;el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2500);}
+
+// ── EXPORTS ─────────────────────────────────────────────
+function exportCSV() {
+  var csv='Type,Description,Montant,Date\n'+S.transactions.map(function(t){return (t.type==='in'?'Entrée':'Sortie')+',"'+t.desc+'",'+t.amount+','+t.date;}).join('\n');
+  csv+='\n\nSorties prévues\nDescription,Montant,Date\n'+S.planned.map(function(p){return '"'+p.desc+'",'+p.amount+','+p.date;}).join('\n');
+  var blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download='isaacsanka-export.csv';a.click();
+  toast('Export CSV ✓');
+}
+function exportProjectsCSV(){
+  var csv='Nom,Type,Qté,Prix,Coût,CA,Profit,Marge,Seuil,Marketing,TVA,Date\n'+S.projects.map(function(p){return '"'+p.name+'",'+p.type+','+p.qty+','+p.price+','+Math.round(p.totalCost)+','+Math.round(p.ca)+','+Math.round(p.profit)+','+p.margin+'%,'+p.bep+','+Math.round(p.marketing||0)+','+(p.tva||'Franchise')+','+p.date;}).join('\n');
+  var blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download='isaacsanka-projets.csv';a.click();
+  toast('Export CSV ✓');
+}
+function exportPDF(){window.print();toast('Impression lancée ✓');}
+
+// ── INIT ────────────────────────────────────────────────
+(function() {
+  // Attach navigation to all nav buttons
+  var navBtns = document.querySelectorAll('.nav-btn, .mnav-btn');
+  for(var i=0; i<navBtns.length; i++) {
+    (function(btn) {
+      btn.addEventListener('click', function() {
+        goTo(btn.getAttribute('data-page'));
+      });
+    })(navBtns[i]);
+  }
+
+  // Close modals on overlay click
+  var overlays = document.querySelectorAll('.modal-overlay');
+  for(var i=0; i<overlays.length; i++) {
+    (function(o) {
+      o.addEventListener('click', function(e) { if(e.target===o) o.classList.remove('open'); });
+    })(overlays[i]);
+  }
+
+  // Set date default
+  var addDate = document.getElementById('add-date');
+  if(addDate) addDate.value = new Date().toISOString().split('T')[0];
+
+  // Initial render
+  updateSidebar();
+  renderDashboard();
+  calcCR();
+  calcPrix();
+})();
+</script>
+</body>
+</html>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// BLOC V2 — NOUVELLES FONCTIONNALITÉS
+// Injecté proprement APRÈS le script original
+// Aucun override, aucun doublon, aucun conflit
+// ══════════════════════════════════════════════════════════
+
+// ── SUPABASE ─────────────────────────────────────────────
+var SB_URL='https://tnbiieulsnxvbxowglub.supabase.co';
+var SB_KEY='sb_publishable_2PE8MDIDjVB_Z1b4e8fxYw_S2KPCq4h';
+
+function showSync(s){var e=document.getElementById('sync-indicator');if(!e)return;if(s==='on'){e.textContent='● Sync';e.style.color='#2D6A1F';}else if(s==='ing'){e.textContent='↻ Sync...';e.style.color='#7A4A0A';}else if(s==='err'){e.textContent='● Erreur';e.style.color='#8C2222';}else{e.textContent='● Local';e.style.color='#A8A7A3';}}
+
+async function sbGet(k){try{var r=await fetch(SB_URL+'/rest/v1/cockpit_data?id=eq.'+k+'&select=data',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});if(!r.ok)return null;var d=await r.json();return(d&&d.length>0)?d[0].data:null;}catch(e){return null;}}
+async function sbSet(k,v){try{var r=await fetch(SB_URL+'/rest/v1/cockpit_data',{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},body:JSON.stringify({id:k,data:v,updated_at:new Date().toISOString()})});return r.ok;}catch(e){return false;}}
+
+async function sbSaveAll(){showSync('ing');var keys=['cash','transactions','planned','orders','tasks','ftasks','pieces','couts','mats','mercs','prods','b2bl','evts'];var ok=await Promise.all(keys.map(function(k){return sbSet(k,S[k]);}));showSync(ok.every(Boolean)?'on':'err');}
+
+async function loadFromSupabase(){showSync('ing');var keys=['cash','transactions','planned','orders','tasks','ftasks','pieces','couts','mats','mercs','prods','b2bl','evts'];var any=false;for(var i=0;i<keys.length;i++){var k=keys[i];var v=await sbGet(k);if(v!==null){S[k]=v;lsSet(k,v);any=true;}}if(any){showSync('on');updateSidebar();renderDashboard();var cur=document.querySelector('.nav-btn.active');if(cur)goTo(cur.getAttribute('data-page'));}else showSync('off');}
+
+// ── DONNÉES ÉTENDUES (chargées depuis localStorage ou défauts) ──
+S.pieces=lsGet('pieces')||[{name:'Futal denim S/M/L',qty:8,mat:'denim 12oz indigo',status:'couper',presta:'',date:'',priority:'haute',link:''},{name:'Surchemise ML denim',qty:6,mat:'denim 12oz',status:'couture',presta:'Fatima',date:'2025-06-28',priority:'normale',link:''},{name:'Jupe-short denim',qty:5,mat:'denim 12oz',status:'couture',presta:'Fatima',date:'2025-06-30',priority:'normale',link:''},{name:'Besace-tablier',qty:3,mat:'simili cuir',status:'qualite',presta:'',date:'',priority:'normale',link:''},{name:'Porte-cles denim',qty:12,mat:'chutes denim',status:'pret',presta:'',date:'',priority:'basse',link:''},{name:'Surchemise MC S/M',qty:2,mat:'denim 10oz',status:'pret',presta:'',date:'',priority:'basse',link:''}];
+S.couts=lsGet('couts')||[{name:'Fatima (principale)',ec:'Surchemise ML + Jupe-short',date:'2025-06-30',pay:'du',mt:400},{name:'Prestataire 2',ec:'',date:'',pay:'dispo',mt:0}];
+S.mats=lsGet('mats')||[{name:'Denim 12oz indigo',stock:'4,2 m',seuil:'3 m',status:'ok',img:''},{name:'Denim 10oz brut',stock:'1,5 m',seuil:'3 m',status:'bas',img:''},{name:'Drill polycoton noir',stock:'2,8 m',seuil:'2 m',status:'ok',img:''},{name:'Simili cuir noir',stock:'0,8 m',seuil:'1 m',status:'faible',img:''},{name:'Tergal beige',stock:'3,1 m',seuil:'2 m',status:'ok',img:''},{name:'Toile coton naturel',stock:'0,5 m',seuil:'1 m',status:'bas',img:''}];
+S.mercs=lsGet('mercs')||[{name:'Fil polyester noir',stock:'8 bobines',status:'ok'},{name:'Fil indigo',stock:'1 bobine',status:'bas'},{name:'Boutons metal cuivre',stock:'42 pcs',status:'ok'},{name:'Fermetures eclairs',stock:'6 pcs',status:'faible'},{name:'Etiquettes tissu',stock:'120 pcs',status:'ok'},{name:'Emballages kraft',stock:'18 pcs',status:'faible'}];
+S.prods=lsGet('prods')||[{name:'Futal denim',cat:'coeur',status:'actif',price:210,cost:68,img:''},{name:'Surchemise ML',cat:'coeur',status:'actif',price:220,cost:72,img:''},{name:'Surchemise MC',cat:'coeur',status:'actif',price:190,cost:58,img:''},{name:'Jupe-short',cat:'coeur',status:'actif',price:180,cost:54,img:''},{name:'Besace-tablier',cat:'accessoire',status:'actif',price:140,cost:48,img:''},{name:'Surchemise sans manches',cat:'test',status:'prototype',price:165,cost:52,img:''},{name:'Bomber',cat:'rd',status:'rd',price:0,cost:0,img:''}];
+S.b2bl=lsGet('b2bl')||[{name:'Concept Store Lyon',ty:'Wholesale',am:5400,st:'Devis envoyé',re:'2025-06-28',no:'18 pièces coeur',lk:''},{name:'Boutique Nantes',ty:'Dépôt-vente',am:3000,st:'En discussion',re:'2025-07-05',no:'12 pièces',lk:''},{name:'Polestar',ty:'Collab habillage',am:0,st:'Partenaire actif',re:'',no:'',lk:''}];
+S.evts=lsGet('evts')||[{ti:'Paiement couturière Fatima',dt:'2025-06-25',de:'400 €',ur:'urgent'},{ti:'Livraison coutures collection été',dt:'2025-06-30',de:'11 pièces attendues',ur:'soon'},{ti:'Drop collection été e-shop',dt:'2025-07-07',de:'Objectif 3 500 €',ur:'soon'},{ti:'Relance devis Concept Store Lyon',dt:'2025-06-28',de:'',ur:'soon'},{ti:'Shooting collection été',dt:'2025-07-07',de:'',ur:'ok'},{ti:'Arrivée stagiaire atelier',dt:'2025-09-01',de:'',ur:'ok'},{ti:'Pop-up Paris',dt:'2025-09-26',de:'Objectif 5 000 €',ur:'ok'},{ti:'Dossier financement 80-100k EUR',dt:'2025-12-01',de:'',ur:'future'}];
+S.ftasks=lsGet('ftasks')||[{text:'Plan logistique pop-up Paris',done:false,tag:'Sept.',tc:'bb'},{text:'Formaliser onboarding stagiaire',done:false,tag:'',tc:''},{text:'Brief shooting été',done:false,tag:'',tc:''},{text:'Monter dossier financement 80-100k EUR',done:false,tag:'',tc:''},{text:'Fiches produits FR/EN e-shop',done:false,tag:'',tc:''}];
+
+// ── HELPERS ─────────────────────────────────────────────
+function gv2(id){var e=document.getElementById(id);return e?e.value:'';}
+function sv2(id,v){var e=document.getElementById(id);if(e)e.value=(v!==undefined&&v!==null)?String(v):'';}
+
+function closeAllModals(){var all=document.querySelectorAll('.modal-overlay');for(var i=0;i<all.length;i++)all[i].classList.remove('open');}
+function openModalClean(id){closeAllModals();var el=document.getElementById(id);if(el)el.classList.add('open');}
+
+function saveExt(){['pieces','couts','mats','mercs','prods','b2bl','evts','ftasks'].forEach(function(k){lsSet(k,S[k]);});sbSaveAll();}
+
+// ── PRODUCTION ──────────────────────────────────────────
+function rProd(){
+  var c={couper:0,couture:0,qualite:0,pret:0},tot=0;
+  S.pieces.forEach(function(p){c[p.status]=(c[p.status]||0)+p.qty;tot+=p.qty;});
+  function el(id,v){var e=document.getElementById(id);if(e)e.textContent=v;}
+  el('pd-tot',tot);el('pd-cup',c.couper||0);el('pd-sew',c.couture||0);el('pd-rdy',c.pret||0);
+  var cols={couper:'À couper',couture:'En couture',qualite:'Contrôle qualité',pret:'Prêt'};
+  var pc={haute:'#8C2222',normale:'#7A4A0A',basse:'#A8A7A3'};
+  var kb=document.getElementById('kb');
+  if(kb)kb.innerHTML=Object.keys(cols).map(function(st){
+    var items=S.pieces.filter(function(p){return p.status===st;});
+    return '<div class="kc"><div class="kc-title">'+cols[st]+' <span class="badge bgr">'+items.reduce(function(s,p){return s+p.qty;},0)+'</span></div>'+
+      items.map(function(p){var i=S.pieces.indexOf(p);
+        return '<div class="ki"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div class="ki-name">'+p.name+'</div><div class="ki-meta">'+p.qty+' u'+(p.mat?' · '+p.mat:'')+(p.presta?'<br>'+p.presta:'')+(p.date?'<br>Rendu : '+p.date:'')+'</div></div><div class="er2">'+(p.link?'<a href="'+p.link+'" target="_blank" class="btn-e" style="text-decoration:none">🔗</a>':'')+'<button class="btn-e" onclick="openP('+i+')">✎</button><button class="btn-x" onclick="delP('+i+')">✕</button></div></div><span style="font-size:10px;color:'+(pc[p.priority]||'#A8A7A3')+'">● '+p.priority+'</span></div>';
+      }).join('')+'</div>';
+  }).join('');
+  var cl=document.getElementById('cout-list');
+  if(cl)cl.innerHTML='<table><thead><tr><th>Prestataire</th><th>En cours</th><th>Rendu</th><th>Paiement</th><th></th></tr></thead><tbody>'+
+    S.couts.map(function(c2,i){var b=c2.pay==='du'?'ba':c2.pay==='ok'?'bg':'bgr';var t=c2.pay==='du'?'À payer '+fmt(c2.mt):c2.pay==='ok'?'Payée':'Disponible';
+    return '<tr><td><strong>'+c2.name+'</strong></td><td class="td2">'+c2.ec+'</td><td class="td2">'+c2.date+'</td><td><span class="badge '+b+'">'+t+'</span></td><td class="er2"><button class="btn-e" onclick="openC('+i+')">✎</button><button class="btn-x" onclick="delC('+i+')">✕</button></td></tr>';
+    }).join('')+'</tbody></table>';
+}
+function openP(i){
+  var ti=document.getElementById('mp-t');
+  if(i>=0){var p=S.pieces[i];sv2('mp-i',i);sv2('mp-name',p.name);sv2('mp-qty',p.qty);sv2('mp-mat',p.mat);sv2('mp-st',p.status);sv2('mp-pre',p.presta);sv2('mp-dt',p.date);sv2('mp-pr',p.priority);sv2('mp-lk',p.link||'');if(ti)ti.textContent='Modifier la pièce';}
+  else{sv2('mp-i',-1);sv2('mp-name','');sv2('mp-qty',1);sv2('mp-mat','');sv2('mp-st','couper');sv2('mp-pre','');sv2('mp-dt','');sv2('mp-pr','normale');sv2('mp-lk','');if(ti)ti.textContent='Nouvelle pièce';}
+  openModalClean('mp');
+}
+function saveP(){
+  var nm=gv2('mp-name').trim();
+  if(!nm){var e=document.getElementById('mp-name');if(e)e.focus();return;}
+  var i=parseInt(gv2('mp-i'));
+  var o={name:nm,qty:parseInt(gv2('mp-qty'))||1,mat:gv2('mp-mat'),status:gv2('mp-st'),presta:gv2('mp-pre'),date:gv2('mp-dt'),priority:gv2('mp-pr'),link:gv2('mp-lk')};
+  if(i>=0)S.pieces[i]=o;else S.pieces.unshift(o);
+  closeAllModals();saveExt();rProd();toast('Pièce sauvegardée ✓');
+}
+function delP(i){if(!confirm('Supprimer ?'))return;S.pieces.splice(i,1);saveExt();rProd();}
+function openC(i){
+  if(i>=0){var c=S.couts[i];sv2('mc-i',i);sv2('mc-name',c.name);sv2('mc-ec',c.ec);sv2('mc-dt',c.date);sv2('mc-py',c.pay);sv2('mc-mt',c.mt);}
+  else{sv2('mc-i',-1);sv2('mc-name','');sv2('mc-ec','');sv2('mc-dt','');sv2('mc-py','dispo');sv2('mc-mt',0);}
+  openModalClean('mc');
+}
+function saveC(){var nm=gv2('mc-name').trim();if(!nm){document.getElementById('mc-name').focus();return;}var i=parseInt(gv2('mc-i'));var o={name:nm,ec:gv2('mc-ec'),date:gv2('mc-dt'),pay:gv2('mc-py'),mt:parseFloat(gv2('mc-mt'))||0};if(i>=0)S.couts[i]=o;else S.couts.unshift(o);closeAllModals();saveExt();rProd();toast('Prestataire sauvegardé ✓');}
+function delC(i){if(!confirm('Supprimer ?'))return;S.couts.splice(i,1);saveExt();rProd();}
+
+// ── STOCKS ──────────────────────────────────────────────
+function rStocks(){
+  var am=S.mats.filter(function(m){return m.status!=='ok';}).length;
+  var am2=S.mercs.filter(function(m){return m.status!=='ok';}).length;
+  function el(id,v){var e=document.getElementById(id);if(e)e.textContent=v;}
+  el('st-nb',S.mats.length);el('st-al',am);el('st-mn',S.mercs.length);el('st-ma',am2);
+  var sb=function(s){return s==='ok'?'<span class="badge bg">OK</span>':s==='faible'?'<span class="badge ba">Faible</span>':'<span class="badge br">Bas</span>';};
+  var ml=document.getElementById('mat-list');
+  if(ml)ml.innerHTML=S.mats.map(function(m,i){
+    var img=m.img?'<img src="'+m.img+'" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0;margin-right:10px" onerror="this.style.display=\'none\'">'
+      :'<div style="width:40px;height:40px;background:#F7F6F2;border-radius:6px;flex-shrink:0;margin-right:10px;display:flex;align-items:center;justify-content:center;font-size:18px">🧵</div>';
+    return '<div style="display:flex;align-items:center;padding:9px 0;border-bottom:1px solid rgba(0,0,0,0.06)">'+img+'<div style="flex:1"><div style="font-size:13px;font-weight:500">'+m.name+'</div><div style="font-size:11px;color:#6B6A66;margin-top:2px">'+m.stock+(m.seuil?' · seuil '+m.seuil:'')+'</div></div>'+sb(m.status)+'<div class="er2" style="margin-left:10px"><button class="btn-e" onclick="openM('+i+')">✎</button><button class="btn-x" onclick="delM('+i+')">✕</button></div></div>';
+  }).join('');
+  var merc=document.getElementById('merc-list');
+  if(merc)merc.innerHTML='<table><thead><tr><th>Article</th><th>Stock</th><th>Statut</th><th></th></tr></thead><tbody>'+
+    S.mercs.map(function(m,i){return '<tr><td>'+m.name+'</td><td>'+m.stock+'</td><td>'+sb(m.status)+'</td><td class="er2"><button class="btn-e" onclick="openMc('+i+')">✎</button><button class="btn-x" onclick="delMc('+i+')">✕</button></td></tr>';}).join('')+'</tbody></table>';
+}
+function openM(i){if(i>=0){var m=S.mats[i];sv2('mm-i',i);sv2('mm-name',m.name);sv2('mm-st',m.stock);sv2('mm-sl',m.seuil);sv2('mm-s',m.status);sv2('mm-img',m.img||'');}else{sv2('mm-i',-1);sv2('mm-name','');sv2('mm-st','');sv2('mm-sl','');sv2('mm-s','ok');sv2('mm-img','');}openModalClean('mm');}
+function saveM(){var nm=gv2('mm-name').trim();if(!nm){document.getElementById('mm-name').focus();return;}var i=parseInt(gv2('mm-i'));var o={name:nm,stock:gv2('mm-st'),seuil:gv2('mm-sl'),status:gv2('mm-s'),img:gv2('mm-img')};if(i>=0)S.mats[i]=o;else S.mats.unshift(o);closeAllModals();saveExt();rStocks();toast('Matière sauvegardée ✓');}
+function delM(i){if(!confirm('Supprimer ?'))return;S.mats.splice(i,1);saveExt();rStocks();}
+function openMc(i){if(i>=0){var m=S.mercs[i];sv2('mmc-i',i);sv2('mmc-name',m.name);sv2('mmc-st',m.stock);sv2('mmc-s',m.status);}else{sv2('mmc-i',-1);sv2('mmc-name','');sv2('mmc-st','');sv2('mmc-s','ok');}openModalClean('mmc');}
+function saveMc(){var nm=gv2('mmc-name').trim();if(!nm){document.getElementById('mmc-name').focus();return;}var i=parseInt(gv2('mmc-i'));var o={name:nm,stock:gv2('mmc-st'),status:gv2('mmc-s')};if(i>=0)S.mercs[i]=o;else S.mercs.unshift(o);closeAllModals();saveExt();rStocks();toast('Mercerie sauvegardée ✓');}
+function delMc(i){if(!confirm('Supprimer ?'))return;S.mercs.splice(i,1);saveExt();rStocks();}
+
+// ── PRODUITS ────────────────────────────────────────────
+function rProdus(){
+  var cl={coeur:'bb',accessoire:'bgr',test:'ba',rd:'bgr'};var sl={actif:'bg',prototype:'ba',pause:'ba',rd:'bgr'};var ct={coeur:'Cœur',accessoire:'Accessoire',test:'Test',rd:'R&D'};
+  var e=document.getElementById('prod-grid');if(!e)return;
+  e.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px">'+
+    S.prods.map(function(p,i){
+      var m=p.price>0?Math.round((1-p.cost/p.price)*100):0;var mc=m>60?'#2D6A1F':m>25?'#7A4A0A':'#8C2222';
+      var img=p.img?'<img src="'+p.img+'" style="width:100%;height:130px;object-fit:cover;border-radius:7px 7px 0 0;display:block" onerror="this.style.display=\'none\'">'
+        :'<div style="width:100%;height:90px;background:#F7F6F2;border-radius:7px 7px 0 0;display:flex;align-items:center;justify-content:center;font-size:28px">👗</div>';
+      return '<div style="background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:8px;overflow:hidden">'+img+'<div style="padding:10px 12px"><div style="font-size:13px;font-weight:500;margin-bottom:5px">'+p.name+'</div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="badge '+(cl[p.cat]||'bgr')+'">'+(ct[p.cat]||p.cat)+'</span><span class="badge '+(sl[p.status]||'bgr')+'">'+p.status+'</span></div>'+(p.price?'<div style="font-size:11px;color:#6B6A66">'+p.price+' € · coût '+p.cost+' € · <span style="color:'+mc+'">'+m+'%</span></div>':'<div style="font-size:11px;color:#A8A7A3">Prix non défini</div>')+'<div class="er2" style="margin-top:8px"><button class="btn-e" onclick="openPr('+i+')">✎ Modifier</button><button class="btn-x" onclick="delPr('+i+')">✕</button></div></div></div>';
+    }).join('')+'</div>';
+}
+function openPr(i){if(i>=0){var p=S.prods[i];sv2('mpr-i',i);sv2('mpr-name',p.name);sv2('mpr-cat',p.cat);sv2('mpr-st',p.status);sv2('mpr-px',p.price||'');sv2('mpr-co',p.cost||'');sv2('mpr-img',p.img||'');}else{sv2('mpr-i',-1);sv2('mpr-name','');sv2('mpr-cat','coeur');sv2('mpr-st','actif');sv2('mpr-px','');sv2('mpr-co','');sv2('mpr-img','');}openModalClean('mpr');}
+function savePr(){var nm=gv2('mpr-name').trim();if(!nm){document.getElementById('mpr-name').focus();return;}var i=parseInt(gv2('mpr-i'));var o={name:nm,cat:gv2('mpr-cat'),status:gv2('mpr-st'),price:parseFloat(gv2('mpr-px'))||0,cost:parseFloat(gv2('mpr-co'))||0,img:gv2('mpr-img')};if(i>=0)S.prods[i]=o;else S.prods.unshift(o);closeAllModals();saveExt();rProdus();toast('Produit sauvegardé ✓');}
+function delPr(i){if(!confirm('Supprimer ?'))return;S.prods.splice(i,1);saveExt();rProdus();}
+
+// ── B2B ─────────────────────────────────────────────────
+function rB2B(){
+  var ec=S.b2bl.filter(function(b){return b.st!=='Partenaire actif'&&b.st!=='Perdu';}).length;
+  var ca=S.b2bl.filter(function(b){return b.st!=='Perdu';}).reduce(function(s,b){return s+b.am;},0);
+  var sg=S.b2bl.filter(function(b){return b.st==='Signé';}).length;
+  var pa=S.b2bl.filter(function(b){return b.st==='Partenaire actif';}).length;
+  function el(id,v){var e=document.getElementById(id);if(e)e.textContent=v;}
+  el('b2b-ct',ec);el('b2b-ca',fmt(ca));el('b2b-sg',sg);el('b2b-pa',pa);
+  var sb={'En discussion':'bb','Devis envoyé':'ba','Négociation':'ba','Signé':'bg','Partenaire actif':'bg','Perdu':'br'};
+  var e=document.getElementById('b2b-list');
+  if(e)e.innerHTML='<table><thead><tr><th>Partenaire</th><th>Type</th><th>Montant</th><th>Statut</th><th>Relance</th><th>Notes</th><th></th></tr></thead><tbody>'+
+    S.b2bl.map(function(b,i){return '<tr><td><strong>'+b.name+'</strong></td><td class="td2">'+b.ty+'</td><td>'+(b.am?fmt(b.am):'—')+'</td><td><span class="badge '+(sb[b.st]||'bgr')+'">'+b.st+'</span></td><td class="td2">'+b.re+'</td><td class="td2">'+b.no+'</td><td class="er2">'+(b.lk?'<a href="'+b.lk+'" target="_blank" class="btn-e" style="text-decoration:none">🔗</a>':'')+'<button class="btn-e" onclick="openB('+i+')">✎</button><button class="btn-x" onclick="delB('+i+')">✕</button></td></tr>';}).join('')+'</tbody></table>';
+}
+function openB(i){if(i>=0){var b=S.b2bl[i];sv2('mb-i',i);sv2('mb-name',b.name);sv2('mb-ty',b.ty);sv2('mb-am',b.am||'');sv2('mb-st',b.st);sv2('mb-re',b.re);sv2('mb-no',b.no);sv2('mb-lk',b.lk||'');}else{sv2('mb-i',-1);sv2('mb-name','');sv2('mb-ty','Wholesale');sv2('mb-am','');sv2('mb-st','En discussion');sv2('mb-re','');sv2('mb-no','');sv2('mb-lk','');}openModalClean('mb');}
+function saveB(){var nm=gv2('mb-name').trim();if(!nm){document.getElementById('mb-name').focus();return;}var i=parseInt(gv2('mb-i'));var o={name:nm,ty:gv2('mb-ty'),am:parseFloat(gv2('mb-am'))||0,st:gv2('mb-st'),re:gv2('mb-re'),no:gv2('mb-no'),lk:gv2('mb-lk')};if(i>=0)S.b2bl[i]=o;else S.b2bl.unshift(o);closeAllModals();saveExt();rB2B();toast('B2B sauvegardé ✓');}
+function delB(i){if(!confirm('Supprimer ?'))return;S.b2bl.splice(i,1);saveExt();rB2B();}
+
+// ── CALENDRIER ──────────────────────────────────────────
+function rCal(){
+  var dc={urgent:'#8C2222',soon:'#7A4A0A',ok:'#2D6A1F',future:'#A8A7A3'};
+  var sorted=S.evts.slice().sort(function(a,b){return a.dt<b.dt?-1:1;});
+  var e=document.getElementById('evt-list');
+  if(e)e.innerHTML=sorted.map(function(ev){var i=S.evts.indexOf(ev);
+    return '<div class="tl"><div class="tl-dot" style="background:'+(dc[ev.ur]||'#A8A7A3')+'"></div><div style="flex:1"><div class="tl-t">'+ev.ti+'</div><div class="tl-d">'+ev.dt+(ev.de?' · '+ev.de:'')+'</div></div><div class="er2"><button class="btn-e" onclick="openE('+i+')">✎</button><button class="btn-x" onclick="delE('+i+')">✕</button></div></div>';
+  }).join('');
+}
+function openE(i){if(i>=0){var e=S.evts[i];sv2('me-i',i);sv2('me-ti',e.ti);sv2('me-dt',e.dt);sv2('me-ur',e.ur);sv2('me-de',e.de);}else{sv2('me-i',-1);sv2('me-ti','');sv2('me-dt','');sv2('me-ur','ok');sv2('me-de','');}openModalClean('me');}
+function saveE(){var nm=gv2('me-ti').trim();if(!nm){document.getElementById('me-ti').focus();return;}var i=parseInt(gv2('me-i'));var o={ti:nm,dt:gv2('me-dt'),ur:gv2('me-ur'),de:gv2('me-de')};if(i>=0)S.evts[i]=o;else S.evts.unshift(o);closeAllModals();saveExt();rCal();toast('Échéance sauvegardée ✓');}
+function delE(i){if(!confirm('Supprimer ?'))return;S.evts.splice(i,1);saveExt();rCal();}
+
+// ── TÂCHES À VENIR ──────────────────────────────────────
+function rFutureTasks(){
+  var e=document.getElementById('future-task-list');
+  if(e)e.innerHTML=S.ftasks.map(function(t,i){
+    return '<div class="task '+(t.done?'done':'')+'"><div class="task-cb" onclick="toggleFTask('+i+')" style="cursor:pointer">'+(t.done?'✓':'')+'</div><div class="task-text">'+t.text+(t.tag?' <span class="badge '+t.tc+'" style="margin-left:6px">'+t.tag+'</span>':'')+'</div><button class="btn-x" style="margin-left:auto;flex-shrink:0" onclick="delFTask('+i+')">✕</button></div>';
+  }).join('');
+}
+function toggleFTask(i){S.ftasks[i].done=!S.ftasks[i].done;saveExt();rFutureTasks();}
+function delFTask(i){if(!confirm('Supprimer ?'))return;S.ftasks.splice(i,1);saveExt();rFutureTasks();}
+function addFutureTask(){var t=prompt('Nouvelle tâche à venir :');if(!t||!t.trim())return;S.ftasks.unshift({text:t.trim(),done:false,tag:'',tc:''});saveExt();rFutureTasks();}
+
+// ── COMMANDES (remplace les boutons existants) ───────────
+function rCmd(){
+  var sc={'À expédier':'ba','En préparation':'bb','Expédiée':'bg','Livrée':'bgr'};
+  var actif=S.orders.filter(function(o){return o.status!=='Livrée';}).length;
+  var ship=S.orders.filter(function(o){return o.status==='À expédier';}).length;
+  var prep=S.orders.filter(function(o){return o.status==='En préparation';}).length;
+  var done=S.orders.filter(function(o){return o.status==='Livrée';}).length;
+  function el(id,v,c){var e=document.getElementById(id);if(e){e.textContent=v;if(c)e.style.color=c;}}
+  el('o-active',actif);el('o-ship',ship,ship>0?'#7A4A0A':'');el('o-prep',prep);el('o-done',done);
+  var e=document.getElementById('orders-table');
+  if(e)e.innerHTML='<table><thead><tr><th>#</th><th>Client</th><th>Pièce</th><th>Montant</th><th>Canal</th><th>Statut</th><th></th></tr></thead><tbody>'+
+    S.orders.map(function(o,i){return '<tr><td class="td2">'+o.id+'</td><td>'+o.client+'</td><td class="td2">'+o.piece+'</td><td>'+fmt(o.amount)+'</td><td><span class="badge bgr">'+o.canal+'</span></td><td><span class="badge '+(sc[o.status]||'bgr')+'">'+o.status+'</span></td><td class="er2"><button class="btn-e" onclick="openCmd('+i+')">✎</button><button class="btn-x" onclick="delCmd('+i+')">✕</button></td></tr>';
+    }).join('')+'</tbody></table>';
+}
+function openCmd(i){
+  var ti=document.getElementById('modal-cmd-t');
+  if(i>=0){var o=S.orders[i];sv2('cmd-i',i);sv2('cmd-client',o.client);sv2('cmd-piece',o.piece);sv2('cmd-amount',o.amount);sv2('cmd-canal',o.canal);sv2('cmd-status',o.status);if(ti)ti.textContent='Modifier la commande';}
+  else{sv2('cmd-i',-1);sv2('cmd-client','');sv2('cmd-piece','');sv2('cmd-amount','');sv2('cmd-canal','E-shop');sv2('cmd-status','En préparation');if(ti)ti.textContent='Nouvelle commande';}
+  openModalClean('modal-cmd');
+}
+function saveCmd(){
+  var cl=gv2('cmd-client').trim(),pc=gv2('cmd-piece').trim();
+  if(!cl){document.getElementById('cmd-client').focus();return;}
+  if(!pc){document.getElementById('cmd-piece').focus();return;}
+  var i=parseInt(gv2('cmd-i'));
+  var id=i>=0?S.orders[i].id:'#'+String(S.orders.length+200);
+  var o={id:id,client:cl,piece:pc,amount:parseFloat(gv2('cmd-amount'))||0,canal:gv2('cmd-canal'),status:gv2('cmd-status')};
+  if(i>=0)S.orders[i]=o;else S.orders.unshift(o);
+  closeAllModals();persist();sbSaveAll();rCmd();toast('Commande sauvegardée ✓');
+}
+function delCmd(i){if(!confirm('Supprimer ?'))return;S.orders.splice(i,1);persist();sbSaveAll();rCmd();}
+
+// ── TRÉSORERIE EDIT/DELETE ───────────────────────────────
+function rTresoButtons(){
+  var e=document.getElementById('t-moves');
+  if(e)e.innerHTML=S.transactions.map(function(t,i){
+    return '<div class="cash-row"><span>'+t.desc+'<br><span style="font-size:10px;color:#A8A7A3">'+t.date+'</span></span><div class="er2"><span class="'+(t.type==='in'?'cp':'cn')+'">'+(t.type==='in'?'+':'−')+fmt(t.amount)+'</span><button class="btn-e" onclick="editTx('+i+')">✎</button><button class="btn-x" onclick="delTx('+i+')">✕</button></div></div>';
+  }).join('');
+  var p=document.getElementById('t-planned');
+  if(p)p.innerHTML=S.planned.map(function(pl,i){
+    return '<div class="cash-row"><span>'+pl.desc+'<br><span style="font-size:10px;color:#A8A7A3">'+pl.date+'</span></span><div class="er2"><span class="cn">−'+fmt(pl.amount)+'</span><button class="btn-e" onclick="editPl('+i+')">✎</button><button class="btn-x" onclick="delPl('+i+')">✕</button></div></div>';
+  }).join('');
+  var to=S.planned.reduce(function(s,pl){return s+pl.amount;},0);
+  var e2=document.getElementById('t-total-out');if(e2)e2.textContent='−'+fmt(to);
+}
+function editTx(i){var t=S.transactions[i];var e=document.getElementById('add-type');if(e)e.value=t.type;var d=document.getElementById('add-desc');if(d)d.value=t.desc;var a=document.getElementById('add-amount');if(a)a.value=t.amount;var dt=document.getElementById('add-date');if(dt)dt.value=t.date;var hi=document.getElementById('edit-tx-idx');if(hi)hi.value=i;openModalClean('modal-add');}
+function delTx(i){if(!confirm('Supprimer ?'))return;var t=S.transactions[i];if(t.type==='in')S.cash-=t.amount;else S.cash+=t.amount;S.transactions.splice(i,1);persist();sbSaveAll();updateSidebar();renderTresorerie();rTresoButtons();}
+function editPl(i){var p=S.planned[i];var d=document.getElementById('planned-desc');if(d)d.value=p.desc;var a=document.getElementById('planned-amount');if(a)a.value=p.amount;var dt=document.getElementById('planned-date');if(dt)dt.value=p.date;var hi=document.getElementById('edit-planned-idx');if(hi)hi.value=i;openModalClean('modal-planned');}
+function delPl(i){if(!confirm('Supprimer ?'))return;S.planned.splice(i,1);persist();sbSaveAll();renderTresorerie();rTresoButtons();}
+
+// ── PARAMÈTRES ──────────────────────────────────────────
+function saveSH(){var s=gv2('sh-store').trim(),k=gv2('sh-key').trim();if(!s||!k)return;lsSet('sh_s',s);lsSet('sh_k',k);updBadges();toast('Clés Shopify sauvegardées ✓');}
+function clearSH(){lsSet('sh_s',null);lsSet('sh_k',null);updBadges();toast('Shopify déconnecté');}
+function saveBK(){var id=gv2('bk-id').trim(),sc=gv2('bk-secret').trim();if(!id||!sc)return;lsSet('bk_i',id);lsSet('bk_s',sc);updBadges();toast('Clés Powens sauvegardées ✓');}
+function clearBK(){lsSet('bk_i',null);lsSet('bk_s',null);updBadges();toast('Banque déconnectée');}
+function updBadges(){
+  var sh=lsGet('sh_s')&&lsGet('sh_k'),bk=lsGet('bk_i')&&lsGet('bk_s');
+  var sb=document.getElementById('sh-badge');if(sb){sb.className='apibadge '+(sh?'api-on':'api-off');sb.textContent=sh?'✓ Connecté':'Non connecté';}
+  var bb=document.getElementById('bk-badge');if(bb){bb.className='apibadge '+(bk?'api-on':'api-off');bb.textContent=bk?'✓ Connecté':'Non connecté';}
+  var ss=document.getElementById('sh-store');if(ss&&lsGet('sh_s'))ss.value=lsGet('sh_s');
+  var bi=document.getElementById('bk-id');if(bi&&lsGet('bk_i'))bi.value=lsGet('bk_i');
+}
+function exportAll(){
+  var csv='COCKPIT ATELIER ISAACSANKA\n\nSOLDE,'+S.cash+'\n\nTRANSACTIONS\nType,Description,Montant,Date\n'+S.transactions.map(function(t){return(t.type==='in'?'Entrée':'Sortie')+',"'+t.desc+'",'+t.amount+','+t.date;}).join('\n')+'\n\nCOMMANDES\n#,Client,Piece,Montant,Canal,Statut\n'+S.orders.map(function(o){return o.id+',"'+o.client+'","'+o.piece+'",'+o.amount+','+o.canal+','+o.status;}).join('\n')+'\n\nPRODUITS\nNom,Cat,Prix,Cout,Marge\n'+S.prods.filter(function(p){return p.price>0;}).map(function(p){return'"'+p.name+'",'+p.cat+','+p.price+','+p.cost+','+Math.round((1-p.cost/p.price)*100)+'%';}).join('\n');
+  var blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='isaacsanka-export.csv';a.click();toast('Export téléchargé ✓');
+}
+function resetAll(){if(!confirm('Réinitialiser TOUTES les données ?'))return;if(!confirm('Dernière confirmation ?'))return;['cash','transactions','planned','orders','tasks','ftasks','pieces','couts','mats','mercs','prods','b2bl','evts','projects'].forEach(function(k){try{localStorage.removeItem('isa_'+k);}catch(e){}});window.location.reload();}
+
+// ── OVERRIDE goTo PROPRE ────────────────────────────────
+var _baseGoTo=goTo;
+goTo=function(page){
+  _baseGoTo(page);
+  if(page==='production')rProd();
+  if(page==='stocks')rStocks();
+  if(page==='produits')rProdus();
+  if(page==='b2b')rB2B();
+  if(page==='calendrier')rCal();
+  if(page==='taches'){rFutureTasks();}
+  if(page==='commandes')rCmd();
+  if(page==='tresorerie')rTresoButtons();
+  if(page==='parametres')updBadges();
+};
+
+// ── INIT V2 ─────────────────────────────────────────────
+(function(){
+  // Fermer modales sur clic overlay
+  var ov=document.querySelectorAll('.modal-overlay');
+  for(var i=0;i<ov.length;i++){(function(o){o.addEventListener('click',function(e){if(e.target===o)closeAllModals();});})(ov[i]);}
+  // Lancer Supabase sync
+  if(typeof loadFromSupabase==='function')loadFromSupabase();
+})();
+</script>
+</body>
+</html>

@@ -4941,6 +4941,376 @@ setTimeout(injectImportBtn, 800);
 
 })();
   </script>
+  <script>
+    // ══════════════════════════════════════════════════════════
+// V2.6 — STOCK PIÈCES FINIES
+// Gestion du stock disponible à la vente
+// Décrémentation automatique à la commande
+// ══════════════════════════════════════════════════════════
+(function() {
+
+// ── DONNÉES ───────────────────────────────────────────────
+S.stockPieces = lsGet('stockPieces') || [
+  {id:'sp1', ref:'Futal denim', variante:'S', qte:2, seuil:1, statut:'disponible', prix:210, notes:''},
+  {id:'sp2', ref:'Futal denim', variante:'M', qte:3, seuil:2, statut:'disponible', prix:210, notes:''},
+  {id:'sp3', ref:'Futal denim', variante:'L', qte:1, seuil:1, statut:'disponible', prix:210, notes:''},
+  {id:'sp4', ref:'Surchemise ML', variante:'S/M', qte:2, seuil:1, statut:'disponible', prix:220, notes:''},
+  {id:'sp5', ref:'Surchemise ML', variante:'L/XL', qte:1, seuil:1, statut:'disponible', prix:220, notes:''},
+  {id:'sp6', ref:'Jupe-short', variante:'S', qte:2, seuil:1, statut:'disponible', prix:180, notes:''},
+  {id:'sp7', ref:'Jupe-short', variante:'M', qte:1, seuil:1, statut:'disponible', prix:180, notes:''},
+  {id:'sp8', ref:'Besace-tablier', variante:'Unique', qte:3, seuil:2, statut:'disponible', prix:140, notes:''},
+  {id:'sp9', ref:'Porte-cles denim', variante:'Unique', qte:12, seuil:5, statut:'disponible', prix:20, notes:''},
+];
+
+function saveStockPieces() {
+  lsSet('stockPieces', S.stockPieces);
+  if (typeof sbSet === 'function') sbSet('stockPieces', S.stockPieces);
+}
+
+// ── INJECTER LA PAGE DANS LA SIDEBAR ─────────────────────
+(function injectNav() {
+  // Ajouter dans la sidebar après "Stocks matières"
+  var stocks = document.querySelector('.nav-btn[data-page="stocks"]');
+  if (!stocks) { setTimeout(injectNav, 500); return; }
+  if (document.querySelector('.nav-btn[data-page="stock-pieces"]')) return;
+
+  var btn = document.createElement('button');
+  btn.className = 'nav-btn';
+  btn.setAttribute('data-page', 'stock-pieces');
+  btn.innerHTML = '&#9633; Stock pieces finies';
+  btn.addEventListener('click', function() { goTo('stock-pieces'); });
+  stocks.parentNode.insertBefore(btn, stocks.nextSibling);
+})();
+
+// ── INJECTER LA PAGE HTML ─────────────────────────────────
+(function injectPage() {
+  if (document.getElementById('page-stock-pieces')) return;
+  var content = document.getElementById('content');
+  if (!content) { setTimeout(injectPage, 500); return; }
+
+  var page = document.createElement('div');
+  page.id = 'page-stock-pieces';
+  page.className = 'page';
+  page.innerHTML =
+    // KPIs
+    '<div class="grid4" style="margin-bottom:16px" id="sp-kpis"></div>' +
+    // Alertes
+    '<div id="sp-alerts"></div>' +
+    // Tableau + bouton
+    '<div class="card">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
+        '<div class="card-title" style="margin:0">Stock pieces disponibles</div>' +
+        '<div style="display:flex;gap:8px">' +
+          '<button class="btn" onclick="exportStockCSV()" style="font-size:11px">Export CSV</button>' +
+          '<button class="btn primary" style="font-size:12px;padding:6px 12px" onclick="openStockModal(-1)">+ Ajouter</button>' +
+        '</div>' +
+      '</div>' +
+      '<div id="sp-table"></div>' +
+    '</div>' +
+    // Vue par référence
+    '<div class="card" style="margin-top:14px">' +
+      '<div class="card-title">Vue par reference</div>' +
+      '<div id="sp-by-ref"></div>' +
+    '</div>';
+  content.appendChild(page);
+})();
+
+// ── MODALE AJOUT/EDIT ─────────────────────────────────────
+(function injectModal() {
+  if (document.getElementById('modal-stock-piece')) return;
+  var m = document.createElement('div');
+  m.id = 'modal-stock-piece';
+  m.className = 'modal-overlay';
+  m.innerHTML =
+    '<div class="modal" style="max-width:480px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+        '<div class="modal-title" id="sp-modal-title" style="margin:0">Nouvelle piece</div>' +
+        '<button id="sp-modal-close" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6B6A66">&#215;</button>' +
+      '</div>' +
+      '<input type="hidden" id="sp-edit-id" value="">' +
+      '<div class="form-row">' +
+        '<div class="form-group"><label class="form-label">Reference / Nom</label>' +
+          '<input class="form-input" id="sp-ref" placeholder="Ex : Futal denim"></div>' +
+        '<div class="form-group"><label class="form-label">Variante (taille, couleur)</label>' +
+          '<input class="form-input" id="sp-variante" placeholder="Ex : M, S/M, Indigo"></div>' +
+      '</div>' +
+      '<div class="form-row">' +
+        '<div class="form-group"><label class="form-label">Quantite en stock</label>' +
+          '<input class="form-input" type="number" id="sp-qte" value="1" min="0"></div>' +
+        '<div class="form-group"><label class="form-label">Seuil d\'alerte</label>' +
+          '<input class="form-input" type="number" id="sp-seuil" value="1" min="0"></div>' +
+      '</div>' +
+      '<div class="form-row">' +
+        '<div class="form-group"><label class="form-label">Prix de vente (EUR)</label>' +
+          '<input class="form-input" type="number" id="sp-prix" placeholder="0"></div>' +
+        '<div class="form-group"><label class="form-label">Statut</label>' +
+          '<select class="form-input" id="sp-statut">' +
+            '<option value="disponible">Disponible</option>' +
+            '<option value="reserve">Reserve</option>' +
+            '<option value="epuise">Epuise</option>' +
+          '</select></div>' +
+      '</div>' +
+      '<div class="form-group"><label class="form-label">Notes</label>' +
+        '<input class="form-input" id="sp-notes" placeholder="Ex : derniere piece, coloris special..."></div>' +
+      '<div style="display:flex;gap:10px;margin-top:4px">' +
+        '<button class="btn" id="sp-modal-cancel" style="flex:1;justify-content:center">Annuler</button>' +
+        '<button class="btn primary" onclick="saveStockPiece()" style="flex:1;justify-content:center">Sauvegarder</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(m);
+  document.getElementById('sp-modal-close').addEventListener('click', closeAllModals);
+  document.getElementById('sp-modal-cancel').addEventListener('click', closeAllModals);
+  m.addEventListener('click', function(e) { if (e.target === m) closeAllModals(); });
+})();
+
+// ── RENDER ────────────────────────────────────────────────
+function rStockPieces() {
+  var pieces = S.stockPieces || [];
+  var total = pieces.reduce(function(s,p){return s+p.qte;},0);
+  var valeur = pieces.reduce(function(s,p){return s+(p.qte*(p.prix||0));},0);
+  var alertes = pieces.filter(function(p){return p.qte<=p.seuil&&p.qte>0;}).length;
+  var epuises = pieces.filter(function(p){return p.qte===0;}).length;
+  var dispos = pieces.filter(function(p){return p.qte>0&&p.statut==='disponible';}).length;
+
+  // KPIs
+  var kpis = document.getElementById('sp-kpis');
+  if (kpis) kpis.innerHTML =
+    '<div class="metric"><div class="metric-label">Pieces disponibles</div><div class="metric-value" style="color:#2D6A1F">' + dispos + '</div><div class="metric-sub">references en stock</div></div>' +
+    '<div class="metric"><div class="metric-label">Total unites</div><div class="metric-value">' + total + '</div><div class="metric-sub">toutes variantes</div></div>' +
+    '<div class="metric"><div class="metric-label">Valeur stock</div><div class="metric-value">' + Math.round(valeur).toLocaleString('fr-FR') + ' EUR</div><div class="metric-sub">au prix de vente</div></div>' +
+    '<div class="metric"><div class="metric-label">Alertes</div><div class="metric-value" style="color:' + (alertes+epuises>0?'#8C2222':'#2D6A1F') + '">' + (alertes+epuises) + '</div><div class="metric-sub">' + epuises + ' epuise(s)</div></div>';
+
+  // Alertes
+  var alertDiv = document.getElementById('sp-alerts');
+  if (alertDiv) {
+    var bassAlert = pieces.filter(function(p){return p.qte===0;});
+    var lowAlert = pieces.filter(function(p){return p.qte>0&&p.qte<=p.seuil;});
+    var html = '';
+    if (bassAlert.length) html += '<div class="alert alert-r" style="margin-bottom:8px">&#9888; ' + bassAlert.length + ' piece(s) epuisee(s) : ' + bassAlert.map(function(p){return p.ref+' '+p.variante;}).join(', ') + '</div>';
+    if (lowAlert.length) html += '<div class="alert alert-a" style="margin-bottom:8px">&#9888; ' + lowAlert.length + ' piece(s) sous le seuil d\'alerte : ' + lowAlert.map(function(p){return p.ref+' '+p.variante+' ('+p.qte+' restant)';}).join(', ') + '</div>';
+    alertDiv.innerHTML = html;
+  }
+
+  // Tableau principal
+  var sc = {disponible:'bg', reserve:'ba', epuise:'br'};
+  var tbl = document.getElementById('sp-table');
+  if (tbl) {
+    if (!pieces.length) {
+      tbl.innerHTML = '<div style="padding:24px;text-align:center;color:#A8A7A3;font-size:13px">Aucune piece en stock. Clique sur + Ajouter pour commencer.</div>';
+    } else {
+      tbl.innerHTML = '<table><thead><tr><th>Reference</th><th>Variante</th><th>Stock</th><th>Prix</th><th>Statut</th><th>Notes</th><th></th></tr></thead><tbody>' +
+        pieces.map(function(p, i) {
+          var stockColor = p.qte === 0 ? '#8C2222' : p.qte <= p.seuil ? '#7A4A0A' : '#2D6A1F';
+          return '<tr>' +
+            '<td><strong>' + p.ref + '</strong></td>' +
+            '<td class="td2">' + p.variante + '</td>' +
+            '<td><span style="font-size:15px;font-weight:600;color:' + stockColor + '">' + p.qte + '</span>' +
+              '<span style="font-size:10px;color:#A8A7A3;margin-left:4px">/ seuil ' + p.seuil + '</span>' +
+              '<div style="display:flex;gap:4px;margin-top:4px">' +
+                '<button onclick="ajusterStock(' + i + ',-1)" style="width:22px;height:22px;border:1px solid rgba(0,0,0,0.15);border-radius:4px;background:#fff;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;padding:0">-</button>' +
+                '<button onclick="ajusterStock(' + i + ',1)" style="width:22px;height:22px;border:1px solid rgba(0,0,0,0.15);border-radius:4px;background:#fff;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;padding:0">+</button>' +
+              '</div></td>' +
+            '<td>' + (p.prix ? p.prix + ' EUR' : '—') + '</td>' +
+            '<td><span class="badge ' + (sc[p.statut]||'bgr') + '">' + p.statut + '</span></td>' +
+            '<td class="td2" style="font-size:11px">' + (p.notes||'—') + '</td>' +
+            '<td class="er2">' +
+              '<button class="btn-e" onclick="openStockModal(' + i + ')">&#9998;</button>' +
+              '<button class="btn-x" onclick="delStockPiece(' + i + ')">&#215;</button>' +
+            '</td></tr>';
+        }).join('') +
+        '</tbody></table>';
+    }
+  }
+
+  // Vue par référence
+  var byRef = {};
+  pieces.forEach(function(p) {
+    if (!byRef[p.ref]) byRef[p.ref] = {total:0, variantes:[], valeur:0};
+    byRef[p.ref].total += p.qte;
+    byRef[p.ref].valeur += p.qte * (p.prix||0);
+    byRef[p.ref].variantes.push(p);
+  });
+
+  var refDiv = document.getElementById('sp-by-ref');
+  if (refDiv) {
+    refDiv.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">' +
+      Object.keys(byRef).map(function(ref) {
+        var r = byRef[ref];
+        var totalColor = r.total === 0 ? '#8C2222' : r.total <= 2 ? '#7A4A0A' : '#2D6A1F';
+        return '<div style="background:#F7F6F2;border-radius:9px;padding:14px">' +
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">' +
+            '<div style="font-size:13px;font-weight:500">' + ref + '</div>' +
+            '<div style="font-size:20px;font-weight:600;color:' + totalColor + '">' + r.total + '</div>' +
+          '</div>' +
+          r.variantes.map(function(v) {
+            var vc = v.qte===0?'#8C2222':v.qte<=v.seuil?'#7A4A0A':'#2D6A1F';
+            return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.06);font-size:12px">' +
+              '<span style="color:#6B6A66">' + v.variante + '</span>' +
+              '<span style="font-weight:500;color:' + vc + '">' + v.qte + ' u</span>' +
+            '</div>';
+          }).join('') +
+          '<div style="font-size:11px;color:#A8A7A3;margin-top:8px">Valeur : ' + Math.round(r.valeur).toLocaleString('fr-FR') + ' EUR</div>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }
+}
+
+// ── AJUSTER STOCK RAPIDE ─────────────────────────────────
+window.ajusterStock = function(i, delta) {
+  var p = S.stockPieces[i];
+  if (!p) return;
+  p.qte = Math.max(0, p.qte + delta);
+  if (p.qte === 0) p.statut = 'epuise';
+  else if (p.statut === 'epuise') p.statut = 'disponible';
+  saveStockPieces();
+  rStockPieces();
+  if (typeof journalLog === 'function') journalLog('modification', 'Stock ' + p.ref + ' ' + p.variante + ' : ' + (delta>0?'+':'-') + Math.abs(delta) + ' (total : ' + p.qte + ')');
+};
+
+// ── MODALE CRUD ───────────────────────────────────────────
+window.openStockModal = function(i) {
+  var ti = document.getElementById('sp-modal-title');
+  if (i >= 0) {
+    var p = S.stockPieces[i];
+    document.getElementById('sp-edit-id').value = i;
+    document.getElementById('sp-ref').value = p.ref;
+    document.getElementById('sp-variante').value = p.variante;
+    document.getElementById('sp-qte').value = p.qte;
+    document.getElementById('sp-seuil').value = p.seuil;
+    document.getElementById('sp-prix').value = p.prix || '';
+    document.getElementById('sp-statut').value = p.statut;
+    document.getElementById('sp-notes').value = p.notes || '';
+    if (ti) ti.textContent = 'Modifier la piece';
+  } else {
+    document.getElementById('sp-edit-id').value = '';
+    document.getElementById('sp-ref').value = '';
+    document.getElementById('sp-variante').value = '';
+    document.getElementById('sp-qte').value = 1;
+    document.getElementById('sp-seuil').value = 1;
+    document.getElementById('sp-prix').value = '';
+    document.getElementById('sp-statut').value = 'disponible';
+    document.getElementById('sp-notes').value = '';
+    if (ti) ti.textContent = 'Nouvelle piece';
+  }
+  closeAllModals();
+  var modal = document.getElementById('modal-stock-piece');
+  if (modal) modal.classList.add('open');
+};
+
+window.saveStockPiece = function() {
+  var ref = document.getElementById('sp-ref').value.trim();
+  if (!ref) { document.getElementById('sp-ref').focus(); return; }
+  var idx = document.getElementById('sp-edit-id').value;
+  var o = {
+    id: idx !== '' ? S.stockPieces[parseInt(idx)].id : 'sp' + Date.now(),
+    ref: ref,
+    variante: document.getElementById('sp-variante').value.trim() || 'Unique',
+    qte: parseInt(document.getElementById('sp-qte').value) || 0,
+    seuil: parseInt(document.getElementById('sp-seuil').value) || 1,
+    prix: parseFloat(document.getElementById('sp-prix').value) || 0,
+    statut: document.getElementById('sp-statut').value,
+    notes: document.getElementById('sp-notes').value.trim()
+  };
+  if (o.qte === 0) o.statut = 'epuise';
+  if (idx !== '') S.stockPieces[parseInt(idx)] = o;
+  else S.stockPieces.push(o);
+  closeAllModals();
+  saveStockPieces();
+  rStockPieces();
+  toast('Piece sauvegardee !');
+  if (typeof journalLog === 'function') journalLog(idx!==''?'modification':'creation', 'Stock piece : ' + o.ref + ' ' + o.variante);
+};
+
+window.delStockPiece = function(i) {
+  var p = S.stockPieces[i];
+  if (!confirm('Supprimer ' + p.ref + ' ' + p.variante + ' ?')) return;
+  S.stockPieces.splice(i, 1);
+  saveStockPieces();
+  rStockPieces();
+  toast('Piece supprimee');
+};
+
+// ── EXPORT CSV ────────────────────────────────────────────
+window.exportStockCSV = function() {
+  var csv = 'Reference,Variante,Quantite,Seuil,Prix EUR,Statut,Notes\n' +
+    S.stockPieces.map(function(p) {
+      return '"'+p.ref+'","'+p.variante+'",'+p.qte+','+p.seuil+','+(p.prix||0)+',"'+p.statut+'","'+(p.notes||'')+'"';
+    }).join('\n');
+  var blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'stock-pieces-isaacsanka.csv'; a.click();
+  toast('Export CSV telecharge !');
+};
+
+// ── DECREMENT AUTO A LA COMMANDE ──────────────────────────
+// Quand une commande passe à "Expediee", on décrémente le stock
+var _saveCmdStock = saveCmd;
+saveCmd = function() {
+  _saveCmdStock();
+  var idx = parseInt(gv2('cmd-i'));
+  var statut = gv2('cmd-status');
+  // Si la commande passe à Expediee ou Livree, décrémenter le stock
+  if (statut === 'Expediee' || statut === 'Livree') {
+    var piece = gv2('cmd-piece').trim();
+    if (piece) {
+      var found = S.stockPieces.find(function(p) {
+        return piece.toLowerCase().includes(p.ref.toLowerCase()) && p.qte > 0;
+      });
+      if (found && found.qte > 0) {
+        found.qte--;
+        if (found.qte === 0) found.statut = 'epuise';
+        saveStockPieces();
+        toast('Stock mis a jour : ' + found.ref + ' ' + found.variante + ' → ' + found.qte + ' restant(s)');
+      }
+    }
+  }
+};
+
+// ── NOTIFICATIONS STOCK BAS ───────────────────────────────
+var _checkNotifsStock = checkNotifications;
+checkNotifications = function() {
+  _checkNotifsStock();
+  var epuises = (S.stockPieces||[]).filter(function(p){return p.qte===0;});
+  var bas = (S.stockPieces||[]).filter(function(p){return p.qte>0&&p.qte<=p.seuil;});
+  if (epuises.length) {
+    NOTIFS.push({id:'stock-epuise', type:'urgent', icon:'&#9744;',
+      title: epuises.length + ' piece(s) epuisee(s)',
+      msg: epuises.map(function(p){return p.ref+' '+p.variante;}).join(', '),
+      ts: Date.now()});
+  }
+  if (bas.length) {
+    NOTIFS.push({id:'stock-bas', type:'warn', icon:'&#9744;',
+      title: bas.length + ' piece(s) sous le seuil',
+      msg: bas.map(function(p){return p.ref+' '+p.variante+' ('+p.qte+')';}).join(', '),
+      ts: Date.now()});
+  }
+  if (typeof renderNotifs === 'function') renderNotifs();
+};
+
+// ── OVERRIDE goTo ─────────────────────────────────────────
+var _goToStock = goTo;
+goTo = function(page) {
+  _goToStock(page);
+  if (page === 'stock-pieces') {
+    var p = document.getElementById('page-stock-pieces');
+    if (p) { p.classList.add('active'); }
+    var t = document.getElementById('topbar-title');
+    if (t) t.textContent = 'Stock pieces finies';
+    rStockPieces();
+  }
+};
+
+// ── BOOT ──────────────────────────────────────────────────
+if (typeof sbGet === 'function') {
+  sbGet('stockPieces').then(function(v) {
+    if (v !== null) { S.stockPieces = v; lsSet('stockPieces', v); }
+  });
+}
+
+})();
+  </script>
 </body>
   <script>
     // ══════════════════════════════════════════════════════════

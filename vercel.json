@@ -2,10 +2,17 @@
   "version": 2,
   "builds": [
     { "src": "index.html", "use": "@vercel/static" },
+    { "src": "sw.js", "use": "@vercel/static" },
+    { "src": "manifest.json", "use": "@vercel/static" },
     { "src": "api/*.js", "use": "@vercel/node" }
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
+    {
+      "src": "/sw.js",
+      "dest": "/sw.js",
+      "headers": { "Service-Worker-Allowed": "/" }
+    },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

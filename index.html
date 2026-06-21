@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Isaacsanka">
+<meta name="apple-mobile-web-app-title" content="Atelier Isaacsanka">
 <link rel="manifest" href="manifest.json">
 <title>Atelier Isaacsanka — Cockpit</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
@@ -3920,4 +3920,191 @@ onLoginSuccess = function() {
 </script>
 
 </body>
+  <script>
+    // ══════════════════════════════════════════════════════════
+// V2.4 — ROUTINES ÉDITABLES (créer, modifier, supprimer)
+// ══════════════════════════════════════════════════════════
+
+// ── MODALE ROUTINE ────────────────────────────────────────
+(function() {
+
+// Injecter la modale dans le DOM
+var modalHtml =
+  '<div id="modal-routine" class="modal-overlay">' +
+  '<div class="modal" style="max-width:560px">' +
+  '<div class="modal-title" id="modal-routine-title">Nouvelle routine</div>' +
+  '<input type="hidden" id="routine-edit-id" value="">' +
+  '<div class="form-group"><label class="form-label">Titre</label>' +
+  '<input class="form-input" id="routine-titre" placeholder="Ex : Check hebdo production"></div>' +
+  '<div class="form-group"><label class="form-label">Description</label>' +
+  '<input class="form-input" id="routine-desc" placeholder="Ex : Chaque lundi — 10 min"></div>' +
+  '<div class="form-group"><label class="form-label">Frequence</label>' +
+  '<select class="form-input" id="routine-freq">' +
+  '<option value="hebdo">Chaque semaine</option>' +
+  '<option value="mensuel">Chaque mois</option>' +
+  '<option value="ponctuel">Ponctuelle</option>' +
+  '</select></div>' +
+  '<div class="form-group"><label class="form-label">Elements de la checklist</label>' +
+  '<div id="routine-items-list"></div>' +
+  '<button class="btn" style="margin-top:8px;font-size:12px" onclick="addRoutineItem()">+ Ajouter un element</button></div>' +
+  '<div class="row" style="gap:10px;margin-top:14px">' +
+  '<button class="btn" onclick="closeAllModals()" style="flex:1;justify-content:center">Annuler</button>' +
+  '<button class="btn primary" onclick="saveRoutine()" style="flex:1;justify-content:center">Sauvegarder</button>' +
+  '</div></div></div>';
+
+var container = document.createElement('div');
+container.innerHTML = modalHtml;
+document.body.appendChild(container.firstChild);
+
+// ── OUVRIR LA MODALE ──────────────────────────────────────
+window.openRoutineModal = function(i) {
+  var ti = document.getElementById('modal-routine-title');
+  var itemsList = document.getElementById('routine-items-list');
+
+  if (i >= 0) {
+    var r = S.routines[i];
+    document.getElementById('routine-edit-id').value = i;
+    document.getElementById('routine-titre').value = r.titre;
+    document.getElementById('routine-desc').value = r.description || '';
+    document.getElementById('routine-freq').value = r.freq;
+    if (ti) ti.textContent = 'Modifier la routine';
+    // Remplir les items
+    if (itemsList) {
+      itemsList.innerHTML = '';
+      (r.items || []).forEach(function(item, idx) {
+        addRoutineItemRow(item.texte, idx);
+      });
+    }
+  } else {
+    document.getElementById('routine-edit-id').value = '';
+    document.getElementById('routine-titre').value = '';
+    document.getElementById('routine-desc').value = '';
+    document.getElementById('routine-freq').value = 'hebdo';
+    if (ti) ti.textContent = 'Nouvelle routine';
+    if (itemsList) itemsList.innerHTML = '';
+    // Ajouter 3 lignes vides par defaut
+    addRoutineItemRow('', 0);
+    addRoutineItemRow('', 1);
+    addRoutineItemRow('', 2);
+  }
+  closeAllModals();
+  var modal = document.getElementById('modal-routine');
+  if (modal) modal.classList.add('open');
+};
+
+function addRoutineItemRow(texte, idx) {
+  var list = document.getElementById('routine-items-list');
+  if (!list) return;
+  var row = document.createElement('div');
+  row.className = 'routine-item-row';
+  row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px';
+  row.innerHTML =
+    '<input class="form-input routine-item-input" value="' + (texte || '').replace(/"/g, '&quot;') + '" placeholder="Element de checklist..." style="flex:1">' +
+    '<button class="btn-x" onclick="this.parentNode.remove()" style="flex-shrink:0">x</button>';
+  list.appendChild(row);
+}
+
+window.addRoutineItem = function() {
+  var list = document.getElementById('routine-items-list');
+  if (!list) return;
+  addRoutineItemRow('', list.children.length);
+};
+
+// ── SAUVEGARDER ───────────────────────────────────────────
+window.saveRoutine = function() {
+  var titre = document.getElementById('routine-titre').value.trim();
+  if (!titre) { document.getElementById('routine-titre').focus(); return; }
+
+  var desc  = document.getElementById('routine-desc').value.trim();
+  var freq  = document.getElementById('routine-freq').value;
+  var idx   = document.getElementById('routine-edit-id').value;
+
+  // Collecter les items non vides
+  var inputs = document.querySelectorAll('.routine-item-input');
+  var items = [];
+  for (var i = 0; i < inputs.length; i++) {
+    var val = inputs[i].value.trim();
+    if (val) items.push({ id: 'i' + (i + 1), texte: val });
+  }
+  if (!items.length) { toast('Ajoute au moins un element a la checklist'); return; }
+
+  var o = {
+    id: idx !== '' ? S.routines[parseInt(idx)].id : 'r' + Date.now(),
+    titre: titre,
+    freq: freq,
+    description: desc,
+    items: items,
+    lastDone: idx !== '' ? S.routines[parseInt(idx)].lastDone : null,
+    checks: {}
+  };
+
+  if (idx !== '') {
+    S.routines[parseInt(idx)] = o;
+  } else {
+    S.routines.push(o);
+  }
+
+  closeAllModals();
+  if (typeof saveV23 === 'function') saveV23();
+  if (typeof rRoutines === 'function') rRoutines();
+  toast('Routine sauvegardee !');
+  if (typeof journalLog === 'function') journalLog('modification', 'Routine : ' + titre);
+};
+
+// ── SUPPRIMER ─────────────────────────────────────────────
+window.delRoutine = function(i) {
+  if (!confirm('Supprimer "' + S.routines[i].titre + '" ?')) return;
+  S.routines.splice(i, 1);
+  if (typeof saveV23 === 'function') saveV23();
+  if (typeof rRoutines === 'function') rRoutines();
+  toast('Routine supprimee');
+};
+
+// ── OVERRIDE rRoutines POUR AJOUTER LES BOUTONS EDIT/DEL ──
+var _rRoutinesBase = rRoutines;
+rRoutines = function() {
+  _rRoutinesBase();
+
+  // Ajouter bouton "+ Nouvelle routine" en haut de la page
+  var page = document.getElementById('page-routines');
+  if (!page) return;
+
+  if (!document.getElementById('routine-add-btn')) {
+    var header = document.createElement('div');
+    header.style.cssText = 'display:flex;justify-content:flex-end;margin-bottom:14px';
+    header.innerHTML = '<button id="routine-add-btn" class="btn primary" style="font-size:12px;padding:6px 14px" onclick="openRoutineModal(-1)">+ Nouvelle routine</button>';
+    page.insertBefore(header, page.firstChild);
+  }
+
+  // Ajouter boutons edit/del sur chaque routine-card
+  var cards = page.querySelectorAll('.routine-card');
+  cards.forEach(function(card, i) {
+    if (card.querySelector('.routine-edit-btn')) return; // deja ajouté
+    var headerDiv = card.querySelector('.routine-header');
+    if (!headerDiv) return;
+    var btnGroup = document.createElement('div');
+    btnGroup.style.cssText = 'display:flex;gap:6px;margin-top:8px';
+    btnGroup.innerHTML =
+      '<button class="routine-edit-btn btn-e" onclick="openRoutineModal(' + i + ')" style="font-size:11px">Modifier</button>' +
+      '<button class="btn-x" onclick="delRoutine(' + i + ')" style="font-size:11px">Supprimer</button>';
+    card.appendChild(btnGroup);
+  });
+};
+
+// Fermer modal-routine au clic overlay
+var modalRoutine = document.getElementById('modal-routine');
+if (modalRoutine) {
+  modalRoutine.addEventListener('click', function(e) {
+    if (e.target === modalRoutine) closeAllModals();
+  });
+}
+
+// Re-render si on est deja sur la page routines
+if (document.getElementById('page-routines') &&
+    document.getElementById('page-routines').classList.contains('active')) {
+  if (typeof rRoutines === 'function') rRoutines();
+}
+
+})();
+    </script>
 </html>

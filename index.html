@@ -5311,6 +5311,300 @@ if (typeof sbGet === 'function') {
 
 })();
   </script>
+  <script>
+    // ══════════════════════════════════════════════════════════
+// V2.6 — RESPONSIVE MOBILE COMPLET
+// Optimise l'affichage sur iPhone/iPad
+// ══════════════════════════════════════════════════════════
+(function() {
+
+var style = document.createElement('style');
+style.id = 'responsive-mobile';
+style.textContent = `
+
+/* ── BASE MOBILE (< 768px) ─────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* Sidebar cachée, navigation mobile en bas */
+  #sidebar { display: none !important; }
+  #mobile-nav { display: flex !important; justify-content: space-around; }
+  #shell { flex-direction: column; }
+  #main { width: 100%; }
+
+  /* Topbar compacte */
+  #topbar {
+    padding: 0 10px;
+    height: 48px;
+    gap: 6px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+  #topbar-title { font-size: 13px; white-space: nowrap; }
+  #topbar .btn { font-size: 11px; padding: 5px 8px; white-space: nowrap; flex-shrink: 0; }
+  #topbar .btn.primary { padding: 5px 10px; }
+
+  /* Contenu avec padding bottom pour la nav mobile */
+  #content {
+    padding: 12px;
+    padding-bottom: 80px;
+    overflow-x: hidden;
+  }
+
+  /* Grilles → 1 colonne sur mobile */
+  .grid2, .grid3, .grid4 {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+
+  /* Metrics plus compacts */
+  .metric { padding: 11px 13px; }
+  .metric-value { font-size: 18px; }
+
+  /* Kanban → scroll horizontal */
+  .kanban {
+    grid-template-columns: repeat(4, 240px) !important;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    gap: 8px;
+  }
+
+  /* Tables → scroll horizontal */
+  table { display: block; overflow-x: auto; white-space: nowrap; }
+
+  /* Formulaires → 1 colonne */
+  .form-row { grid-template-columns: 1fr !important; gap: 8px; }
+
+  /* Modales → plein ecran sur mobile */
+  .modal-overlay { padding: 0; align-items: flex-end; }
+  .modal {
+    border-radius: 16px 16px 0 0;
+    max-height: 92vh;
+    width: 100%;
+    max-width: 100% !important;
+    padding: 20px 16px;
+    padding-bottom: 32px;
+  }
+
+  /* Cards */
+  .card { padding: 14px 14px; }
+  .card-title { font-size: 10px; }
+
+  /* Simulateur → 1 colonne */
+  #page-simulateur > div[style*="grid-template-columns:1fr 1fr 1fr"] {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Tréso prévisionnelle forecast */
+  .forecast-row {
+    grid-template-columns: 80px 1fr 1fr 1fr !important;
+    font-size: 11px;
+  }
+
+  /* Canaux tabs → scroll */
+  .canal-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .canal-tab { flex-shrink: 0; }
+  .tab-btns { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .tab-btn { flex-shrink: 0; }
+
+  /* Agenda grille semaine */
+  .semaine-view {
+    grid-template-columns: repeat(7, 100px) !important;
+    overflow-x: auto;
+    gap: 4px;
+  }
+
+  /* Agenda grille mois */
+  #agenda-semaine-view > div[style*="grid-template-columns:repeat(7"] {
+    font-size: 10px;
+  }
+
+  /* Tâches cards */
+  .task-card { padding: 10px 12px; }
+  .task-meta { gap: 5px; }
+
+  /* Routines */
+  .routine-header { flex-direction: column; gap: 8px; }
+
+  /* Prestataires */
+  .presta-card { padding: 12px; }
+
+  /* B2B table → masquer colonnes secondaires */
+  .row-between { flex-direction: column; gap: 8px; align-items: flex-start; }
+
+  /* Topbar sync indicator */
+  #sync-indicator { display: none; }
+
+  /* Notif panel pleine largeur */
+  .notif-panel {
+    width: calc(100% - 20px) !important;
+    right: 10px;
+    left: 10px;
+  }
+
+  /* Grille produits */
+  #prod-grid > div { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Stock pieces vue ref */
+  #sp-by-ref > div { grid-template-columns: 1fr 1fr !important; }
+
+  /* Boutons action dans les tables */
+  .er2 { gap: 3px; }
+  .btn-e, .btn-x { padding: 3px 7px; font-size: 11px; }
+
+  /* Import banque preview */
+  #import-banque-preview-list { max-height: 150px; }
+
+  /* Push section */
+  #push-section { padding: 12px; }
+
+  /* Journal */
+  .journal-item { flex-wrap: wrap; }
+
+  /* Auth screen */
+  .auth-card { padding: 24px 20px; margin: 16px; }
+}
+
+/* ── PETITS MOBILES (< 390px) ──────────────────────────── */
+@media (max-width: 390px) {
+  #content { padding: 10px; padding-bottom: 80px; }
+  .metric-value { font-size: 16px; }
+  .card { padding: 12px; }
+  #prod-grid > div { grid-template-columns: 1fr !important; }
+  #sp-by-ref > div { grid-template-columns: 1fr !important; }
+}
+
+/* ── TABLETTE (768px - 1024px) ─────────────────────────── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  #sidebar { width: 180px; }
+  .grid4 { grid-template-columns: repeat(2, 1fr) !important; }
+  .kanban { grid-template-columns: repeat(2, 1fr) !important; }
+  .modal { max-width: 520px; }
+}
+
+/* ── NAV MOBILE AMELIOREE ──────────────────────────────── */
+@media (max-width: 768px) {
+  #mobile-nav {
+    padding: 6px 0 env(safe-area-inset-bottom, 6px);
+    background: #fff;
+    border-top: 1px solid rgba(0,0,0,0.08);
+  }
+  .mnav-btn {
+    padding: 4px 8px;
+    font-size: 9px;
+    gap: 2px;
+    flex: 1;
+    max-width: 70px;
+  }
+  .mnav-btn span { font-size: 9px; }
+}
+
+`;
+document.head.appendChild(style);
+
+// ── NAV MOBILE ETENDUE ────────────────────────────────────
+// Ajouter plus de boutons dans la nav mobile
+(function updateMobileNav() {
+  var nav = document.getElementById('mobile-nav');
+  if (!nav) { setTimeout(updateMobileNav, 500); return; }
+
+  nav.innerHTML =
+    '<button class="mnav-btn active" data-page="dashboard" onclick="goTo(\'dashboard\')">&#9783;<span>Accueil</span></button>' +
+    '<button class="mnav-btn" data-page="tresorerie" onclick="goTo(\'tresorerie\')">&#9775;<span>Tresor.</span></button>' +
+    '<button class="mnav-btn" data-page="commandes" onclick="goTo(\'commandes\')">&#9634;<span>Cmdes</span></button>' +
+    '<button class="mnav-btn" data-page="taches-pro" onclick="goTo(\'taches-pro\')">&#10003;<span>Taches</span></button>' +
+    '<button class="mnav-btn" data-page="agenda" onclick="goTo(\'agenda\')">&#128197;<span>Agenda</span></button>' +
+    '<button class="mnav-btn" id="mobile-nav-more" onclick="toggleMobileMenu()">&#9776;<span>Menu</span></button>';
+
+  // Mettre a jour l'etat actif
+  nav.querySelectorAll('.mnav-btn[data-page]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      nav.querySelectorAll('.mnav-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+    });
+  });
+})();
+
+// ── MENU MOBILE COMPLET (drawer) ─────────────────────────
+if (!document.getElementById('mobile-drawer')) {
+  var drawer = document.createElement('div');
+  drawer.id = 'mobile-drawer';
+  drawer.style.cssText = 'position:fixed;bottom:0;left:0;right:0;top:0;background:rgba(0,0,0,0.5);z-index:200;display:none';
+  drawer.innerHTML =
+    '<div id="mobile-drawer-panel" style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:20px 20px 0 0;padding:20px 16px;padding-bottom:env(safe-area-inset-bottom,20px);max-height:80vh;overflow-y:auto">' +
+      '<div style="width:36px;height:4px;background:rgba(0,0,0,0.15);border-radius:2px;margin:0 auto 16px"></div>' +
+      '<div style="font-size:10px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:#A8A7A3;margin-bottom:10px">Finance</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">' +
+        mkDrawerBtn('tresorerie','&#9775;','Tresorerie') +
+        mkDrawerBtn('ventes','&#9650;','Ventes') +
+        mkDrawerBtn('treso-prev','&#128200;','Treso prev.') +
+        mkDrawerBtn('canaux','&#128202;','Par canal') +
+        mkDrawerBtn('couts','&#128182;','Couts') +
+        mkDrawerBtn('simulateur','&#9654;','Simulateur') +
+      '</div>' +
+      '<div style="font-size:10px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:#A8A7A3;margin-bottom:10px">Atelier</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">' +
+        mkDrawerBtn('production','&#9864;','Production') +
+        mkDrawerBtn('stocks','&#8801;','Stocks mat.') +
+        mkDrawerBtn('stock-pieces','&#9744;','Stock pieces') +
+        mkDrawerBtn('produits','&#9750;','Produits') +
+        mkDrawerBtn('routines','&#128260;','Routines') +
+      '</div>' +
+      '<div style="font-size:10px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:#A8A7A3;margin-bottom:10px">Commerce & Systeme</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">' +
+        mkDrawerBtn('b2b','&#9874;','B2B') +
+        mkDrawerBtn('prestataires','&#129309;','Prestat.') +
+        mkDrawerBtn('calendrier','&#9776;','Calendrier') +
+        mkDrawerBtn('projets','&#9741;','Projets') +
+        mkDrawerBtn('journal','&#128203;','Journal') +
+        mkDrawerBtn('parametres','&#9881;','Params') +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(drawer);
+  drawer.addEventListener('click', function(e) {
+    if (e.target === drawer) toggleMobileMenu();
+  });
+}
+
+function mkDrawerBtn(page, icon, label) {
+  return '<button onclick="goTo(\'' + page + '\');toggleMobileMenu()" ' +
+    'style="background:#F7F6F2;border:none;border-radius:10px;padding:12px 8px;cursor:pointer;' +
+    'font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:#111110">' +
+    '<span style="font-size:18px">' + icon + '</span>' + label + '</button>';
+}
+
+window.toggleMobileMenu = function() {
+  var drawer = document.getElementById('mobile-drawer');
+  if (!drawer) return;
+  if (drawer.style.display === 'none' || !drawer.style.display) {
+    drawer.style.display = 'block';
+    // Animation
+    var panel = document.getElementById('mobile-drawer-panel');
+    if (panel) {
+      panel.style.transform = 'translateY(100%)';
+      panel.style.transition = 'transform 0.3s ease';
+      setTimeout(function() { panel.style.transform = 'translateY(0)'; }, 10);
+    }
+  } else {
+    drawer.style.display = 'none';
+  }
+};
+
+// ── OVERRIDE goTo POUR MAJ NAV MOBILE ────────────────────
+var _goToResp = goTo;
+goTo = function(page) {
+  _goToResp(page);
+  // Mettre a jour la nav mobile
+  var nav = document.getElementById('mobile-nav');
+  if (nav) {
+    nav.querySelectorAll('.mnav-btn[data-page]').forEach(function(btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-page') === page);
+    });
+  }
+};
+
+})();
+  </script>
 </body>
   <script>
     // ══════════════════════════════════════════════════════════

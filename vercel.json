@@ -7,7 +7,9 @@
     { "src": "api/*.js", "use": "@vercel/node" }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/api/vapid-public", "dest": "/api/vapid-public.js" },
+    { "src": "/api/subscribe", "dest": "/api/subscribe.js" },
+    { "src": "/api/notify", "dest": "/api/notify.js" },
     {
       "src": "/sw.js",
       "dest": "/sw.js",

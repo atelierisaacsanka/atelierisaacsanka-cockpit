@@ -3919,9 +3919,11 @@ onLoginSuccess = function() {
 
 </script>
   <script>
-  // ══════════════════════════════════════════════════════════
-// V2.4 — AGENDA : VUE ANNÉE + CLIC SUR UN JOUR
-// Remplace v2.4-agenda-v2.js
+    // ══════════════════════════════════════════════════════════
+// V2.4 FINAL — AGENDA : VUE SEMAINE + MOIS + ANNEE
+// + CLIC SUR JOUR (modale detail)
+// + NAVIGATION INTER-MOIS / INTER-ANNEES
+// Safari-compatible : pas de onclick inline avec apostrophes
 // ══════════════════════════════════════════════════════════
 (function() {
 
@@ -3930,23 +3932,10 @@ var ANNEE_OFFSET = 0;
 var MOIS_NOMS = ['Janvier','Fevrier','Mars','Avril','Mai','Juin',
                  'Juillet','Aout','Septembre','Octobre','Novembre','Decembre'];
 var MOIS_COURTS = ['Jan','Fev','Mar','Avr','Mai','Jun','Jul','Aou','Sep','Oct','Nov','Dec'];
+var JOURS_LONG = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
 
-// ── AJOUTER BOUTON ANNEE DANS LES TABS ───────────────────
-(function addAnneeTab() {
-  var tabs = document.querySelector('[onclick="filterAgenda(\'mois\')"]');
-  if (!tabs) { setTimeout(addAnneeTab, 300); return; }
-  var parent = tabs.parentNode;
-  if (document.querySelector('[onclick*="annee"]')) return;
-  var btn = document.createElement('button');
-  btn.className = 'tab-btn';
-  btn.setAttribute('onclick', 'filterAgenda("annee")');
-  btn.textContent = 'Annee';
-  parent.appendChild(btn);
-})();
-
-// ── MODALE DETAIL JOUR ───────────────────────────────────
-(function addDayModal() {
-  if (document.getElementById('modal-day-detail')) return;
+// ── INJECTER LA MODALE DETAIL JOUR ───────────────────────
+if (!document.getElementById('modal-day-detail')) {
   var m = document.createElement('div');
   m.id = 'modal-day-detail';
   m.className = 'modal-overlay';
@@ -3954,61 +3943,111 @@ var MOIS_COURTS = ['Jan','Fev','Mar','Avr','Mai','Jun','Jul','Aou','Sep','Oct','
     '<div class="modal" style="max-width:480px">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
         '<div class="modal-title" id="day-detail-title" style="margin:0">Jour</div>' +
-        '<button onclick="closeAllModals()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#6B6A66">x</button>' +
+        '<button id="day-detail-close" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6B6A66;line-height:1">&#215;</button>' +
       '</div>' +
       '<div id="day-detail-content"></div>' +
       '<div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(0,0,0,0.08)">' +
-        '<button class="btn primary" onclick="openTacheFromDay()" style="width:100%;justify-content:center">+ Nouvelle tache ce jour</button>' +
+        '<button id="day-detail-add-btn" class="btn primary" style="width:100%;justify-content:center">+ Nouvelle tache ce jour</button>' +
       '</div>' +
     '</div>';
-  m.addEventListener('click', function(e) { if (e.target === m) closeAllModals(); });
   document.body.appendChild(m);
-})();
+  m.addEventListener('click', function(e) { if (e.target === m) closeAllModals(); });
+  document.getElementById('day-detail-close').addEventListener('click', function() { closeAllModals(); });
+  document.getElementById('day-detail-add-btn').addEventListener('click', function() { openTacheFromDay(); });
+}
 
+// ── AJOUTER BOUTON ANNEE DANS LES TABS ───────────────────
+function addAnneeTab() {
+  if (document.getElementById('btn-agenda-annee')) return;
+  var ref = document.querySelector('.tab-btn[onclick*="mois"]') ||
+            document.querySelector('.tab-btns .tab-btn:last-child');
+  if (!ref) { setTimeout(addAnneeTab, 400); return; }
+  var btn = document.createElement('button');
+  btn.id = 'btn-agenda-annee';
+  btn.className = 'tab-btn';
+  btn.textContent = 'Annee';
+  btn.addEventListener('click', function() { filterAgenda('annee'); });
+  ref.parentNode.appendChild(btn);
+}
+addAnneeTab();
+
+// ── JOUR SELECTIONNE ──────────────────────────────────────
 var _daySelected = null;
 
+// ── COLLECTE ITEMS PAR DATE ───────────────────────────────
+function getItemsDate(dateStr) {
+  var items = [];
+  (S.tachesPro || []).filter(function(t) {
+    return t.echeance === dateStr && t.statut !== 'archivee';
+  }).forEach(function(t) {
+    var done = t.statut === 'terminee';
+    items.push({
+      label: t.titre, type: 'tache', statut: t.statut, montant: null,
+      color: done ? '#2D6A1F' : (t.statut === 'bloquee' ? '#8C2222' : t.priorite === 'haute' ? '#8C2222' : '#1A4F8A'),
+      strike: done
+    });
+  });
+  (S.evts || []).filter(function(e) { return e.dt === dateStr; }).forEach(function(e) {
+    items.push({ label: e.ti, type: 'evt', statut: null, montant: null,
+      color: e.ur === 'urgent' ? '#8C2222' : '#7A4A0A', strike: false });
+  });
+  (S.encaissements || []).filter(function(e) { return e.date === dateStr; }).forEach(function(e) {
+    items.push({ label: e.desc, type: 'enc', statut: null, montant: e.montant,
+      color: '#2D6A1F', strike: false });
+  });
+  (S.depPrevues || []).filter(function(d) { return d.date === dateStr; }).forEach(function(d) {
+    items.push({ label: d.desc, type: 'dep', statut: null, montant: d.montant,
+      color: '#8C2222', strike: false });
+  });
+  (S.planned || []).filter(function(p) { return p.date === dateStr; }).forEach(function(p) {
+    items.push({ label: p.desc, type: 'planned', statut: null, montant: p.amount,
+      color: '#7A4A0A', strike: false });
+  });
+  return items;
+}
+
+// ── OUVRIR MODALE DETAIL JOUR ─────────────────────────────
 window.openDayDetail = function(dateStr) {
   _daySelected = dateStr;
   var d = new Date(dateStr + 'T12:00:00');
-  var jours = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
-  var label = jours[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS_NOMS[d.getMonth()] + ' ' + d.getFullYear();
+  var label = JOURS_LONG[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS_NOMS[d.getMonth()] + ' ' + d.getFullYear();
   var titleEl = document.getElementById('day-detail-title');
   if (titleEl) titleEl.textContent = label;
 
   var items = getItemsDate(dateStr);
   var today = new Date().toISOString().split('T')[0];
   var isPast = dateStr < today;
-  var isToday = dateStr === today;
+
+  var groupes = [
+    { label: 'Taches', items: items.filter(function(i) { return i.type === 'tache'; }) },
+    { label: 'Echeances', items: items.filter(function(i) { return i.type === 'evt'; }) },
+    { label: 'Encaissements prevus', items: items.filter(function(i) { return i.type === 'enc'; }) },
+    { label: 'Depenses prevues', items: items.filter(function(i) { return i.type === 'dep' || i.type === 'planned'; }) }
+  ].filter(function(g) { return g.items.length > 0; });
 
   var html = '';
-  if (!items.length) {
-    html = '<div style="text-align:center;padding:24px 0;color:#A8A7A3;font-size:13px">' +
-      (isPast ? 'Rien de note ce jour.' : 'Rien de prevu ce jour.') + '</div>';
+  if (!groupes.length) {
+    html = '<div style="text-align:center;padding:28px 0;color:#A8A7A3;font-size:13px">' +
+      (isPast ? 'Rien de note ce jour.' : 'Rien de prevu pour ce jour.') + '</div>';
   } else {
-    // Grouper par type
-    var groupes = [
-      { label: 'Taches', icon: 'check', items: items.filter(function(i){return i.type==='tache';}) },
-      { label: 'Echeances', icon: 'cal', items: items.filter(function(i){return i.type==='evt';}) },
-      { label: 'Encaissements', icon: 'enc', items: items.filter(function(i){return i.type==='enc';}) },
-      { label: 'Depenses', icon: 'dep', items: items.filter(function(i){return i.type==='dep'||i.type==='planned';}) },
-    ].filter(function(g){return g.items.length > 0;});
-
+    var statutLabels = { afaire: 'A faire', encours: 'En cours', bloquee: 'Bloquee', terminee: 'Terminee' };
+    var statutColors = { afaire: '#1A4F8A', encours: '#7A4A0A', bloquee: '#8C2222', terminee: '#2D6A1F' };
     groupes.forEach(function(g) {
       html += '<div style="margin-bottom:14px">';
       html += '<div style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;color:#A8A7A3;margin-bottom:8px">' + g.label + '</div>';
       g.items.forEach(function(item) {
-        var extra = '';
-        if (item.statut) {
-          var sc = {afaire:'#1A4F8A',encours:'#7A4A0A',bloquee:'#8C2222',terminee:'#2D6A1F'};
-          extra = '<span style="font-size:10px;color:' + (sc[item.statut]||'#A8A7A3') + ';margin-left:6px">' + item.statut + '</span>';
-        }
-        if (item.montant) {
-          extra = '<span style="font-size:12px;font-weight:500;color:' + item.color + ';margin-left:auto">' +
-            (item.type==='enc'?'+':'−') + item.montant + ' EUR</span>';
-        }
-        html += '<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.05)">';
+        html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid rgba(0,0,0,0.05)">';
         html += '<div style="width:8px;height:8px;border-radius:50%;background:' + item.color + ';flex-shrink:0;margin-top:4px"></div>';
-        html += '<div style="flex:1;font-size:13px;' + (item.strike?'text-decoration:line-through;color:#A8A7A3':'') + '">' + item.label + extra + '</div>';
+        html += '<div style="flex:1">';
+        html += '<div style="font-size:13px;' + (item.strike ? 'text-decoration:line-through;color:#A8A7A3;' : '') + '">' + item.label + '</div>';
+        if (item.statut) {
+          html += '<div style="font-size:11px;color:' + (statutColors[item.statut] || '#A8A7A3') + ';margin-top:2px">' + (statutLabels[item.statut] || item.statut) + '</div>';
+        }
+        html += '</div>';
+        if (item.montant) {
+          html += '<div style="font-size:13px;font-weight:500;color:' + item.color + ';flex-shrink:0">' +
+            (item.type === 'enc' ? '+' : '-') + item.montant + ' EUR</div>';
+        }
         html += '</div>';
       });
       html += '</div>';
@@ -4026,77 +4065,70 @@ window.openTacheFromDay = function() {
   closeAllModals();
   if (typeof openTacheModal === 'function') {
     openTacheModal(-1);
-    // Pre-remplir la date
     setTimeout(function() {
       var echeanceEl = document.getElementById('tache-echeance');
       if (echeanceEl && _daySelected) echeanceEl.value = _daySelected;
-    }, 100);
+    }, 150);
   }
 };
 
-// ── COLLECTE ITEMS PAR DATE (enrichie avec type) ─────────
-function getItemsDate(dateStr) {
-  var items = [];
-  (S.tachesPro || []).filter(function(t) {
-    return t.echeance === dateStr && t.statut !== 'archivee';
-  }).forEach(function(t) {
-    var done = t.statut === 'terminee';
-    items.push({
-      label: t.titre, type: 'tache', statut: t.statut, montant: null,
-      color: done ? '#2D6A1F' : (t.statut==='bloquee'?'#8C2222':t.priorite==='haute'?'#8C2222':'#1A4F8A'),
-      strike: done
+// ── ATTACHER LES CLICS SUR LES CELLULES ──────────────────
+function attachDayClicks() {
+  var gridEl = document.getElementById('agenda-semaine-view');
+  if (!gridEl) return;
+  var cells = gridEl.querySelectorAll('[data-date]');
+  cells.forEach(function(cell) {
+    cell.onclick = null;
+    cell.addEventListener('click', function() {
+      openDayDetail(cell.getAttribute('data-date'));
     });
   });
-  (S.evts || []).filter(function(e){return e.dt===dateStr;}).forEach(function(e) {
-    items.push({label:e.ti, type:'evt', statut:null, montant:null,
-      color:e.ur==='urgent'?'#8C2222':'#7A4A0A', strike:false});
-  });
-  (S.encaissements || []).filter(function(e){return e.date===dateStr;}).forEach(function(e) {
-    items.push({label:e.desc, type:'enc', statut:null, montant:e.montant,
-      color:'#2D6A1F', strike:false});
-  });
-  (S.depPrevues || []).filter(function(d){return d.date===dateStr;}).forEach(function(d) {
-    items.push({label:d.desc, type:'dep', statut:null, montant:d.montant,
-      color:'#8C2222', strike:false});
-  });
-  (S.planned || []).filter(function(p){return p.date===dateStr;}).forEach(function(p) {
-    items.push({label:p.desc, type:'planned', statut:null, montant:p.amount,
-      color:'#7A4A0A', strike:false});
-  });
-  return items;
 }
 
 // ── RENDER VUE SEMAINE ────────────────────────────────────
 function renderSemaineView() {
   var today = new Date();
   var lundi = new Date(today);
-  lundi.setDate(today.getDate() - (today.getDay()===0?6:today.getDay()-1));
+  lundi.setDate(today.getDate() - (today.getDay() === 0 ? 6 : today.getDay() - 1));
   var todayStr = today.toISOString().split('T')[0];
-  var jours = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  var joursLbl = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+
   var titreEl = document.getElementById('agenda-titre');
   var stEl = document.getElementById('agenda-sous-titre');
   if (titreEl) titreEl.textContent = 'Cette semaine';
-  var vendredi = new Date(lundi); vendredi.setDate(lundi.getDate()+4);
+  var vendredi = new Date(lundi); vendredi.setDate(lundi.getDate() + 4);
   if (stEl) stEl.textContent =
-    lundi.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}) + ' — ' +
-    vendredi.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});
-  var cols = '';
+    lundi.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) + ' — ' +
+    vendredi.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+
+  var html = '<div class="semaine-view" id="agenda-grid">';
   for (var d = 0; d < 7; d++) {
-    var jour = new Date(lundi); jour.setDate(lundi.getDate()+d);
+    var jour = new Date(lundi); jour.setDate(lundi.getDate() + d);
     var jourStr = jour.toISOString().split('T')[0];
     var isToday = jourStr === todayStr;
     var items = getItemsDate(jourStr);
-    cols += '<div class="jour-col" style="cursor:pointer;' + (isToday?'border:1.5px solid #111110;background:#fff;':'') + '" onclick="openDayDetail(\'' + jourStr + '\')">';
-    cols += '<div class="jour-label" style="' + (isToday?'color:#111110;':'') + '">';
-    cols += jours[jour.getDay()] + '<br><span style="font-size:13px;font-weight:' + (isToday?'600':'400') + ';color:' + (isToday?'#111110':'#6B6A66') + '">' + jour.getDate() + '</span></div>';
-    items.slice(0,3).forEach(function(i) {
-      cols += '<div class="jour-item" style="background:' + i.color + '20;color:' + i.color + ';' + (i.strike?'text-decoration:line-through;opacity:0.6;':'') + '">' + i.label.substring(0,20) + '</div>';
+    html += '<div class="jour-col" data-date="' + jourStr + '" style="cursor:pointer;' +
+      (isToday ? 'border:1.5px solid #111110;background:#fff;' : '') + '">';
+    html += '<div class="jour-label" style="' + (isToday ? 'color:#111110;' : '') + '">';
+    html += joursLbl[jour.getDay()] + '<br>';
+    html += '<span style="font-size:13px;font-weight:' + (isToday ? '600' : '400') +
+      ';color:' + (isToday ? '#111110' : '#6B6A66') + '">' + jour.getDate() + '</span>';
+    html += '</div>';
+    items.slice(0, 3).forEach(function(i) {
+      html += '<div class="jour-item" style="background:' + i.color + '20;color:' + i.color + ';' +
+        (i.strike ? 'text-decoration:line-through;opacity:0.6;' : '') + '">' +
+        i.label.substring(0, 20) + '</div>';
     });
-    if (items.length > 3) cols += '<div style="font-size:10px;color:#A8A7A3;padding:2px 4px">+' + (items.length-3) + '</div>';
-    cols += '</div>';
+    if (items.length > 3) {
+      html += '<div style="font-size:10px;color:#A8A7A3;padding:2px 4px">+' + (items.length - 3) + '</div>';
+    }
+    html += '</div>';
   }
+  html += '</div>';
+
   var gridEl = document.getElementById('agenda-semaine-view');
-  if (gridEl) gridEl.innerHTML = '<div class="semaine-view" id="agenda-grid">' + cols + '</div>';
+  if (gridEl) gridEl.innerHTML = html;
+  setTimeout(attachDayClicks, 50);
 }
 
 // ── RENDER VUE MOIS ───────────────────────────────────────
@@ -4108,267 +4140,52 @@ function renderMoisView() {
   while (mois > 11) { mois -= 12; annee++; }
   var todayStr = now.toISOString().split('T')[0];
   var premier = new Date(annee, mois, 1);
-  var dernier = new Date(annee, mois+1, 0);
-  var debutSem = premier.getDay()===0?6:premier.getDay()-1;
+  var dernier = new Date(annee, mois + 1, 0);
+  var debutSem = premier.getDay() === 0 ? 6 : premier.getDay() - 1;
+  var joursLbl = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+
   var titreEl = document.getElementById('agenda-titre');
   var stEl = document.getElementById('agenda-sous-titre');
   if (titreEl) titreEl.textContent = MOIS_NOMS[mois] + ' ' + annee;
-  if (stEl) stEl.textContent = dernier.getDate() + ' jours' + (MOIS_OFFSET===0?' (ce mois)':'');
-  var jours = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  if (stEl) stEl.textContent = dernier.getDate() + ' jours' + (MOIS_OFFSET === 0 ? ' (ce mois)' : '');
+
   var html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
-  html += '<button onclick="navMois(-1)" class="btn" style="font-size:16px;padding:4px 12px">&#8592;</button>';
+  html += '<button id="btn-mois-prev" class="btn" style="font-size:16px;padding:4px 14px">&#8592;</button>';
   html += '<span style="font-size:13px;font-weight:500">' + MOIS_NOMS[mois] + ' ' + annee + '</span>';
-  html += '<button onclick="navMois(1)" class="btn" style="font-size:16px;padding:4px 12px">&#8594;</button>';
+  html += '<button id="btn-mois-next" class="btn" style="font-size:16px;padding:4px 14px">&#8594;</button>';
   html += '</div>';
   html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">';
-  jours.forEach(function(j){html+='<div style="text-align:center;font-size:10px;font-weight:500;text-transform:uppercase;color:#A8A7A3;padding:4px 0">'+j+'</div>';});
-  html += '</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">';
-  for(var d=0;d<debutSem;d++) html+='<div style="min-height:75px;background:rgba(0,0,0,0.02);border-radius:6px"></div>';
-  for(var jour=1;jour<=dernier.getDate();jour++){
-    var date=new Date(annee,mois,jour);
-    var dateStr=date.toISOString().split('T')[0];
-    var isToday=dateStr===todayStr;
-    var isPast=dateStr<todayStr;
-    var items=getItemsDate(dateStr);
-    var hasDot=items.length>0;
-    html+='<div onclick="openDayDetail(\''+dateStr+'\')" style="min-height:75px;background:'+(isToday?'#fff':isPast?'rgba(0,0,0,0.03)':'#F7F6F2')+';border-radius:6px;padding:5px 4px;border:'+(isToday?'1.5px solid #111110':'1px solid rgba(0,0,0,0.06)')+';cursor:pointer;transition:box-shadow 0.15s" onmouseover="this.style.boxShadow=\'0 2px 8px rgba(0,0,0,0.1)\'" onmouseout="this.style.boxShadow=\'none\'">';
-    html+='<div style="font-size:12px;font-weight:'+(isToday?'600':'400')+';color:'+(isToday?'#111110':isPast?'#C8C7C3':'#6B6A66')+';margin-bottom:3px">'+jour+'</div>';
-    items.slice(0,2).forEach(function(item){
-      html+='<div style="font-size:10px;padding:2px 4px;border-radius:3px;margin-bottom:2px;background:'+item.color+'18;color:'+item.color+';line-height:1.3;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;'+(item.strike?'text-decoration:line-through;opacity:0.6;':'')+'" title="'+item.label.replace(/"/g,'&quot;')+'">'+item.label+'</div>';
-    });
-    if(items.length>2) html+='<div style="font-size:10px;color:#A8A7A3">+' +(items.length-2)+'</div>';
-    html+='</div>';
-  }
-  var fin=(debutSem+dernier.getDate())%7;
-  if(fin>0){for(var f=fin;f<7;f++)html+='<div style="min-height:75px;background:rgba(0,0,0,0.02);border-radius:6px"></div>';}
-  html+='</div>';
-  var gridEl=document.getElementById('agenda-semaine-view');
-  if(gridEl) gridEl.innerHTML=html;
-}
-
-// ── RENDER VUE ANNÉE ──────────────────────────────────────
-function renderAnneeView() {
-  var now = new Date();
-  var annee = now.getFullYear() + ANNEE_OFFSET;
-  var todayStr = now.toISOString().split('T')[0];
-  var titreEl = document.getElementById('agenda-titre');
-  var stEl = document.getElementById('agenda-sous-titre');
-  if (titreEl) titreEl.textContent = 'Annee ' + annee;
-  if (stEl) stEl.textContent = ANNEE_OFFSET===0?'(cette annee)':'';
-
-  var html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">';
-  html += '<button onclick="navAnnee(-1)" class="btn" style="font-size:16px;padding:4px 12px">&#8592;</button>';
-  html += '<span style="font-size:15px;font-weight:500">' + annee + '</span>';
-  html += '<button onclick="navAnnee(1)" class="btn" style="font-size:16px;padding:4px 12px">&#8594;</button>';
-  html += '</div>';
-  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">';
-
-  for (var m = 0; m < 12; m++) {
-    var premier = new Date(annee, m, 1);
-    var dernier = new Date(annee, m+1, 0);
-    var debutSem = premier.getDay()===0?6:premier.getDay()-1;
-    var isCurMois = now.getFullYear()===annee && now.getMonth()===m;
-
-    // Compter les items du mois
-    var moisItems = 0;
-    for (var j = 1; j <= dernier.getDate(); j++) {
-      var ds = new Date(annee, m, j).toISOString().split('T')[0];
-      moisItems += getItemsDate(ds).length;
-    }
-
-    html += '<div style="background:#fff;border:' + (isCurMois?'1.5px solid #111110':'1px solid rgba(0,0,0,0.08)') + ';border-radius:10px;padding:12px;cursor:pointer" onclick="goToMoisFromAnnee(' + m + ',' + annee + ')">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
-    html += '<div style="font-size:12px;font-weight:500;color:' + (isCurMois?'#111110':'#6B6A66') + '">' + MOIS_COURTS[m] + '</div>';
-    if (moisItems > 0) html += '<span style="font-size:10px;background:#E8F0FA;color:#1A4F8A;padding:1px 6px;border-radius:10px">' + moisItems + '</span>';
-    html += '</div>';
-
-    // Mini grille 7 colonnes
-    html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px">';
-    // Offset
-    for (var x = 0; x < debutSem; x++) html += '<div></div>';
-    for (var d = 1; d <= dernier.getDate(); d++) {
-      var dStr = new Date(annee, m, d).toISOString().split('T')[0];
-      var isT  = dStr === todayStr;
-      var hasItems = getItemsDate(dStr).length > 0;
-      html += '<div style="width:100%;padding-top:100%;position:relative;border-radius:2px;background:' +
-        (isT ? '#111110' : hasItems ? '#E8F0FA' : 'transparent') + '">';
-      html += '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:7px;color:' + (isT?'#fff':hasItems?'#1A4F8A':'#C8C7C3') + '">' + (d <= 9 ? d : '') + '</div>';
-      html += '</div>';
-    }
-    html += '</div></div>';
-  }
-  html += '</div>';
-
-  var gridEl = document.getElementById('agenda-semaine-view');
-  if (gridEl) gridEl.innerHTML = html;
-
-  // Masquer la vue agregee
-  var agregEl = document.getElementById('agenda-agregee');
-  if (agregEl) agregEl.style.display = 'none';
-}
-
-window.goToMoisFromAnnee = function(mois, anneeTarget) {
-  var now = new Date();
-  MOIS_OFFSET = (anneeTarget - now.getFullYear()) * 12 + (mois - now.getMonth());
-  filterAgenda('mois');
-};
-
-window.navMois = function(dir) { MOIS_OFFSET += dir; renderMoisView(); };
-window.navAnnee = function(dir) { ANNEE_OFFSET += dir; renderAnneeView(); };
-
-// ── OVERRIDE filterAgenda ─────────────────────────────────
-filterAgenda = function(mode) {
-  AGENDA_MODE = mode;
-  var tabs = document.querySelectorAll('[onclick^="filterAgenda"]');
-  tabs.forEach(function(t) {
-    var m = t.getAttribute('onclick').match(/'([^']+)'|"([^"]+)"/);
-    t.classList.toggle('active', m && (m[1]||m[2]) === mode);
-  });
-  var agregEl = document.getElementById('agenda-agregee');
-  if (mode === 'mois') {
-    if (agregEl) agregEl.style.display = '';
-    renderMoisView();
-  } else if (mode === 'annee') {
-    renderAnneeView();
-  } else {
-    MOIS_OFFSET = 0;
-    if (agregEl) agregEl.style.display = '';
-    renderSemaineView();
-    // Re-render agregee
-    var tmp = AGENDA_MODE; AGENDA_MODE = 'semaine';
-    if (typeof rAgenda === 'function') rAgenda();
-    AGENDA_MODE = tmp;
-  }
-};
-
-// ── OVERRIDE rAgenda ──────────────────────────────────────
-var _rAgendaOrig = typeof rAgenda === 'function' ? rAgenda : function(){};
-rAgenda = function() {
-  if (AGENDA_MODE === 'mois')  { renderMoisView(); return; }
-  if (AGENDA_MODE === 'annee') { renderAnneeView(); return; }
-  renderSemaineView();
-  _rAgendaOrig();
-};
-
-})();
-  </script>   
-      
-<script>
-// ══════════════════════════════════════════════════════════
-// V2.4 — AGENDA MOIS COMPLET + NAVIGATION + FIX SEMAINE
-// Remplace le script v2.4-agenda-mois.js précédent
-// ══════════════════════════════════════════════════════════
-(function() {
-
-var MOIS_OFFSET = 0; // 0 = mois actuel, -1 = mois precedent, +1 = suivant
-
-var MOIS_NOMS = ['Janvier','Fevrier','Mars','Avril','Mai','Juin',
-                 'Juillet','Aout','Septembre','Octobre','Novembre','Decembre'];
-
-// ── COLLECTE DES ITEMS PAR DATE ───────────────────────────
-function getItemsDate(dateStr) {
-  var items = [];
-  (S.tachesPro || []).filter(function(t) {
-    return t.echeance === dateStr && t.statut !== 'archivee';
-  }).forEach(function(t) {
-    var done = t.statut === 'terminee';
-    items.push({
-      label: t.titre,
-      color: done ? '#2D6A1F' : (t.priorite === 'haute' ? '#8C2222' : '#1A4F8A'),
-      strike: done
-    });
-  });
-  (S.evts || []).filter(function(e) { return e.dt === dateStr; }).forEach(function(e) {
-    items.push({label: e.ti, color: e.ur === 'urgent' ? '#8C2222' : '#7A4A0A', strike: false});
-  });
-  (S.encaissements || []).filter(function(e) { return e.date === dateStr; }).forEach(function(e) {
-    items.push({label: '+' + e.montant + 'EUR ' + e.desc, color: '#2D6A1F', strike: false});
-  });
-  (S.depPrevues || []).filter(function(d) { return d.date === dateStr; }).forEach(function(d) {
-    items.push({label: '-' + d.montant + 'EUR ' + d.desc, color: '#8C2222', strike: false});
-  });
-  (S.planned || []).filter(function(p) { return p.date === dateStr; }).forEach(function(p) {
-    items.push({label: '-' + p.amount + 'EUR ' + p.desc, color: '#7A4A0A', strike: false});
-  });
-  return items;
-}
-
-// ── RENDER VUE MOIS ───────────────────────────────────────
-function renderMoisView() {
-  var now = new Date();
-  var annee = now.getFullYear();
-  var mois  = now.getMonth() + MOIS_OFFSET;
-  // Ajuster si on depasse 0-11
-  while (mois < 0)  { mois += 12; annee--; }
-  while (mois > 11) { mois -= 12; annee++; }
-
-  var todayStr  = now.toISOString().split('T')[0];
-  var premier   = new Date(annee, mois, 1);
-  var dernier   = new Date(annee, mois + 1, 0);
-  var debutSem  = premier.getDay() === 0 ? 6 : premier.getDay() - 1;
-
-  // Titre
-  var titreEl = document.getElementById('agenda-titre');
-  var stEl    = document.getElementById('agenda-sous-titre');
-  if (titreEl) titreEl.textContent = MOIS_NOMS[mois] + ' ' + annee;
-  if (stEl)    stEl.textContent = dernier.getDate() + ' jours';
-
-  var jours = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
-
-  var html = '';
-
-  // Barre de navigation
-  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
-  html += '<button onclick="navMois(-1)" class="btn" style="font-size:18px;padding:4px 12px">&#8592;</button>';
-  html += '<div style="font-size:14px;font-weight:500">' + MOIS_NOMS[mois] + ' ' + annee + (MOIS_OFFSET === 0 ? ' <span style=\'font-size:11px;color:#A8A7A3\'>(ce mois)</span>' : '') + '</div>';
-  html += '<button onclick="navMois(1)" class="btn" style="font-size:18px;padding:4px 12px">&#8594;</button>';
-  html += '</div>';
-
-  // En-tetes
-  html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">';
-  jours.forEach(function(j) {
+  joursLbl.forEach(function(j) {
     html += '<div style="text-align:center;font-size:10px;font-weight:500;text-transform:uppercase;color:#A8A7A3;padding:4px 0">' + j + '</div>';
   });
-  html += '</div>';
-
-  // Grille
-  html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">';
-
-  // Cases vides debut
-  for (var d = 0; d < debutSem; d++) {
+  html += '</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">';
+  for (var x = 0; x < debutSem; x++) {
     html += '<div style="min-height:75px;background:rgba(0,0,0,0.02);border-radius:6px"></div>';
   }
-
-  // Jours du mois
   for (var jour = 1; jour <= dernier.getDate(); jour++) {
-    var date    = new Date(annee, mois, jour);
+    var date = new Date(annee, mois, jour);
     var dateStr = date.toISOString().split('T')[0];
     var isToday = dateStr === todayStr;
-    var isPast  = dateStr < todayStr;
-    var items   = getItemsDate(dateStr);
-
-    var bgColor     = isToday ? '#fff' : (isPast ? 'rgba(0,0,0,0.03)' : '#F7F6F2');
-    var borderColor = isToday ? '1.5px solid #111110' : '1px solid rgba(0,0,0,0.06)';
-    var numColor    = isToday ? '#111110' : (isPast ? '#C8C7C3' : '#6B6A66');
-    var numWeight   = isToday ? '600' : '400';
-
-    html += '<div style="min-height:75px;background:' + bgColor + ';border-radius:6px;padding:5px 4px;border:' + borderColor + '">';
-    html += '<div style="font-size:12px;font-weight:' + numWeight + ';color:' + numColor + ';margin-bottom:3px">' + jour + '</div>';
-
+    var isPast = dateStr < todayStr;
+    var items = getItemsDate(dateStr);
+    html += '<div data-date="' + dateStr + '" style="min-height:75px;background:' +
+      (isToday ? '#fff' : isPast ? 'rgba(0,0,0,0.03)' : '#F7F6F2') +
+      ';border-radius:6px;padding:5px 4px;border:' +
+      (isToday ? '1.5px solid #111110' : '1px solid rgba(0,0,0,0.06)') +
+      ';cursor:pointer;transition:box-shadow 0.15s">';
+    html += '<div style="font-size:12px;font-weight:' + (isToday ? '600' : '400') +
+      ';color:' + (isToday ? '#111110' : isPast ? '#C8C7C3' : '#6B6A66') + ';margin-bottom:3px">' + jour + '</div>';
     items.slice(0, 2).forEach(function(item) {
       html += '<div style="font-size:10px;padding:2px 4px;border-radius:3px;margin-bottom:2px;' +
         'background:' + item.color + '18;color:' + item.color + ';' +
         'line-height:1.3;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;' +
-        (item.strike ? 'text-decoration:line-through;opacity:0.6;' : '') +
-        '" title="' + item.label.replace(/"/g, '&quot;') + '">' + item.label + '</div>';
+        (item.strike ? 'text-decoration:line-through;opacity:0.6;' : '') + '">' + item.label + '</div>';
     });
     if (items.length > 2) {
-      html += '<div style="font-size:10px;color:#A8A7A3;margin-top:1px">+' + (items.length - 2) + '</div>';
+      html += '<div style="font-size:10px;color:#A8A7A3">+' + (items.length - 2) + '</div>';
     }
     html += '</div>';
   }
-
-  // Cases vides fin
   var fin = (debutSem + dernier.getDate()) % 7;
   if (fin > 0) {
     for (var f = fin; f < 7; f++) {
@@ -4379,89 +4196,139 @@ function renderMoisView() {
 
   var gridEl = document.getElementById('agenda-semaine-view');
   if (gridEl) gridEl.innerHTML = html;
+
+  // Attacher navigation et clics
+  setTimeout(function() {
+    var prev = document.getElementById('btn-mois-prev');
+    var next = document.getElementById('btn-mois-next');
+    if (prev) prev.addEventListener('click', function() { MOIS_OFFSET--; renderMoisView(); });
+    if (next) next.addEventListener('click', function() { MOIS_OFFSET++; renderMoisView(); });
+    attachDayClicks();
+  }, 50);
 }
 
-// ── RENDER VUE SEMAINE (fix retour depuis mois) ───────────
-function renderSemaineView() {
-  var today = new Date();
-  var lundi = new Date(today);
-  lundi.setDate(today.getDate() - (today.getDay() === 0 ? 6 : today.getDay() - 1));
-
-  var days = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
-  var todayStr = today.toISOString().split('T')[0];
+// ── RENDER VUE ANNEE ─────────────────────────────────────
+function renderAnneeView() {
+  var now = new Date();
+  var annee = now.getFullYear() + ANNEE_OFFSET;
+  var todayStr = now.toISOString().split('T')[0];
 
   var titreEl = document.getElementById('agenda-titre');
-  var stEl    = document.getElementById('agenda-sous-titre');
-  if (titreEl) titreEl.textContent = 'Cette semaine';
+  var stEl = document.getElementById('agenda-sous-titre');
+  if (titreEl) titreEl.textContent = 'Annee ' + annee;
+  if (stEl) stEl.textContent = ANNEE_OFFSET === 0 ? '(cette annee)' : '';
 
-  var lundiStr  = lundi.toLocaleDateString('fr-FR', {day:'2-digit', month:'short'});
-  var vendredi  = new Date(lundi); vendredi.setDate(lundi.getDate() + 4);
-  var venStr    = vendredi.toLocaleDateString('fr-FR', {day:'2-digit', month:'short'});
-  if (stEl) stEl.textContent = lundiStr + ' — ' + venStr;
+  var html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">';
+  html += '<button id="btn-annee-prev" class="btn" style="font-size:16px;padding:4px 14px">&#8592;</button>';
+  html += '<span style="font-size:15px;font-weight:500">' + annee + '</span>';
+  html += '<button id="btn-annee-next" class="btn" style="font-size:16px;padding:4px 14px">&#8594;</button>';
+  html += '</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">';
 
-  var cols = '';
-  for (var d = 0; d < 7; d++) {
-    var jour    = new Date(lundi); jour.setDate(lundi.getDate() + d);
-    var jourStr = jour.toISOString().split('T')[0];
-    var isToday = jourStr === todayStr;
-    var items   = getItemsDate(jourStr);
-
-    cols += '<div class="jour-col" style="' + (isToday ? 'border:1.5px solid #111110;background:#fff;' : '') + '">';
-    cols += '<div class="jour-label" style="' + (isToday ? 'color:#111110;' : '') + '">';
-    cols += days[jour.getDay()] + '<br>';
-    cols += '<span style="font-size:13px;font-weight:' + (isToday ? '600' : '400') + ';color:' + (isToday ? '#111110' : '#6B6A66') + '">' + jour.getDate() + '</span>';
-    cols += '</div>';
-    items.forEach(function(i) {
-      cols += '<div class="jour-item" style="background:' + i.color + '20;color:' + i.color + '">' + i.label.substring(0, 22) + '</div>';
-    });
-    cols += '</div>';
+  for (var m = 0; m < 12; m++) {
+    var premier = new Date(annee, m, 1);
+    var dernier = new Date(annee, m + 1, 0);
+    var debutSem = premier.getDay() === 0 ? 6 : premier.getDay() - 1;
+    var isCurMois = now.getFullYear() === annee && now.getMonth() === m;
+    var moisItems = 0;
+    for (var j = 1; j <= dernier.getDate(); j++) {
+      var ds = new Date(annee, m, j).toISOString().split('T')[0];
+      moisItems += getItemsDate(ds).length;
+    }
+    html += '<div data-mois="' + m + '" data-annee="' + annee + '" style="background:#fff;border:' +
+      (isCurMois ? '1.5px solid #111110' : '1px solid rgba(0,0,0,0.08)') +
+      ';border-radius:10px;padding:12px;cursor:pointer">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    html += '<div style="font-size:12px;font-weight:500;color:' + (isCurMois ? '#111110' : '#6B6A66') + '">' + MOIS_COURTS[m] + ' ' + annee + '</div>';
+    if (moisItems > 0) {
+      html += '<span style="font-size:10px;background:#E8F0FA;color:#1A4F8A;padding:1px 6px;border-radius:10px">' + moisItems + '</span>';
+    }
+    html += '</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px">';
+    for (var x = 0; x < debutSem; x++) html += '<div></div>';
+    for (var d = 1; d <= dernier.getDate(); d++) {
+      var dStr = new Date(annee, m, d).toISOString().split('T')[0];
+      var isT = dStr === todayStr;
+      var hasItems = getItemsDate(dStr).length > 0;
+      html += '<div style="aspect-ratio:1;border-radius:2px;display:flex;align-items:center;justify-content:center;' +
+        'background:' + (isT ? '#111110' : hasItems ? '#DDEEFF' : 'transparent') + ';' +
+        'font-size:7px;color:' + (isT ? '#fff' : hasItems ? '#1A4F8A' : '#D0CFC8') + '">' +
+        (d <= 9 ? d : '') + '</div>';
+    }
+    html += '</div></div>';
   }
+  html += '</div>';
 
   var gridEl = document.getElementById('agenda-semaine-view');
-  if (gridEl) gridEl.innerHTML = '<div class="semaine-view" id="agenda-grid">' + cols + '</div>';
-}
+  if (gridEl) gridEl.innerHTML = html;
 
-// ── NAVIGATION MOIS ───────────────────────────────────────
-window.navMois = function(dir) {
-  MOIS_OFFSET += dir;
-  renderMoisView();
-};
+  // Masquer agregee
+  var agregEl = document.getElementById('agenda-agregee');
+  if (agregEl) agregEl.style.display = 'none';
+
+  // Attacher navigation et clics mois
+  setTimeout(function() {
+    var prev = document.getElementById('btn-annee-prev');
+    var next = document.getElementById('btn-annee-next');
+    if (prev) prev.addEventListener('click', function() { ANNEE_OFFSET--; renderAnneeView(); });
+    if (next) next.addEventListener('click', function() { ANNEE_OFFSET++; renderAnneeView(); });
+
+    var moisCells = document.querySelectorAll('[data-mois]');
+    moisCells.forEach(function(cell) {
+      cell.addEventListener('click', function() {
+        var targetMois = parseInt(cell.getAttribute('data-mois'));
+        var targetAnnee = parseInt(cell.getAttribute('data-annee'));
+        var now2 = new Date();
+        MOIS_OFFSET = (targetAnnee - now2.getFullYear()) * 12 + (targetMois - now2.getMonth());
+        filterAgenda('mois');
+      });
+    });
+  }, 50);
+}
 
 // ── OVERRIDE filterAgenda ─────────────────────────────────
 filterAgenda = function(mode) {
   AGENDA_MODE = mode;
-  var tabs = document.querySelectorAll('[onclick^="filterAgenda"]');
+
+  // Mettre a jour les tabs
+  var tabs = document.querySelectorAll('.tab-btn[onclick*="filterAgenda"], #btn-agenda-annee, .tab-btn');
   tabs.forEach(function(t) {
-    t.classList.toggle('active', t.getAttribute('onclick').includes('"' + mode + '"'));
+    var oc = t.getAttribute('onclick') || '';
+    var id = t.id || '';
+    var isActive =
+      (mode === 'semaine' && oc.includes('semaine')) ||
+      (mode === 'mois'    && oc.includes('mois'))    ||
+      (mode === 'annee'   && id === 'btn-agenda-annee');
+    t.classList.toggle('active', isActive);
   });
+
+  var agregEl = document.getElementById('agenda-agregee');
+
   if (mode === 'mois') {
+    if (agregEl) agregEl.style.display = '';
     renderMoisView();
+  } else if (mode === 'annee') {
+    renderAnneeView();
   } else {
     MOIS_OFFSET = 0;
+    if (agregEl) agregEl.style.display = '';
     renderSemaineView();
-    // Render la vue agregee
-    if (typeof rAgenda === 'function') {
-      var tmp = AGENDA_MODE;
-      AGENDA_MODE = 'semaine';
-      rAgenda();
-      AGENDA_MODE = tmp;
-    }
   }
 };
 
 // ── OVERRIDE rAgenda ──────────────────────────────────────
-var _rAgendaOrig = typeof rAgenda === 'function' ? rAgenda : function(){};
+var _rAgendaOrig = typeof rAgenda === 'function' ? rAgenda : function() {};
 rAgenda = function() {
-  if (typeof AGENDA_MODE !== 'undefined' && AGENDA_MODE === 'mois') {
-    renderMoisView();
-  } else {
-    renderSemaineView();
-    _rAgendaOrig();
-  }
+  var mode = typeof AGENDA_MODE !== 'undefined' ? AGENDA_MODE : 'semaine';
+  if (mode === 'mois')  { renderMoisView(); return; }
+  if (mode === 'annee') { renderAnneeView(); return; }
+  renderSemaineView();
+  // Render vue agregee (appel original pour la section "a faire cette semaine")
+  _rAgendaOrig();
 };
 
 })();
-  </script>
+  </script>  
 </body>
   <script>
     // ══════════════════════════════════════════════════════════

@@ -4329,6 +4329,236 @@ rAgenda = function() {
 
 })();
   </script>  
+   <script>
+     // ══════════════════════════════════════════════════════════
+// V2.5 — PAGE VENTES DYNAMIQUE
+// Remplace les données statiques par des données réelles
+// calculées depuis S.orders, S.transactions, S.encaissements
+// ══════════════════════════════════════════════════════════
+(function() {
+
+// ── CALCULS DEPUIS LES DONNÉES RÉELLES ───────────────────
+function calcVentes() {
+  var orders = S.orders || [];
+  var transactions = S.transactions || [];
+  var encaissements = S.encaissements || [];
+
+  // CA total depuis toutes les commandes livrees + en cours
+  var caTotal = orders.reduce(function(s, o) { return s + (o.amount || 0); }, 0);
+
+  // CA ce mois
+  var now = new Date();
+  var moisStr = now.toISOString().slice(0, 7); // "2026-06"
+  var caMois = transactions.filter(function(t) {
+    return t.type === 'in' && t.date && t.date.slice(0, 7) === moisStr;
+  }).reduce(function(s, t) { return s + t.amount; }, 0);
+
+  // Panier moyen
+  var panierMoyen = orders.length > 0 ? caTotal / orders.length : 0;
+
+  // CA par canal
+  var canaux = { eshop: 0, popup: 0, b2b: 0, semimesure: 0, autre: 0 };
+  orders.forEach(function(o) {
+    var c = normalizeCanal2(o.canal);
+    canaux[c] = (canaux[c] || 0) + (o.amount || 0);
+  });
+
+  // Meilleures ventes par pièce
+  var pieces = {};
+  orders.forEach(function(o) {
+    if (!o.piece) return;
+    if (!pieces[o.piece]) pieces[o.piece] = { qty: 0, ca: 0 };
+    pieces[o.piece].qty++;
+    pieces[o.piece].ca += o.amount || 0;
+  });
+  var topPieces = Object.keys(pieces).map(function(k) {
+    return { name: k, qty: pieces[k].qty, ca: pieces[k].ca };
+  }).sort(function(a, b) { return b.ca - a.ca; }).slice(0, 8);
+
+  // Evolution mensuelle (6 derniers mois)
+  var months = [];
+  for (var i = 5; i >= 0; i--) {
+    var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    var ms = d.toISOString().slice(0, 7);
+    var label = d.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+    var mCA = transactions.filter(function(t) {
+      return t.type === 'in' && t.date && t.date.slice(0, 7) === ms;
+    }).reduce(function(s, t) { return s + t.amount; }, 0);
+    months.push({ label: label, ca: mCA });
+  }
+
+  // Encaissements prevus
+  var caAttendu = encaissements.reduce(function(s, e) {
+    return s + (e.montant || 0) * ((e.proba || 80) / 100);
+  }, 0);
+
+  return { caTotal, caMois, panierMoyen, canaux, topPieces, months, caAttendu, nbCommandes: orders.length };
+}
+
+function normalizeCanal2(str) {
+  if (!str) return 'autre';
+  var s = str.toLowerCase();
+  if (s.includes('e-shop') || s.includes('eshop')) return 'eshop';
+  if (s.includes('pop')) return 'popup';
+  if (s.includes('b2b') || s.includes('wholesale')) return 'b2b';
+  if (s.includes('semi')) return 'semimesure';
+  return 'autre';
+}
+
+// ── RENDER PAGE VENTES ────────────────────────────────────
+function rVentes() {
+  var v = calcVentes();
+  var f = function(n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; };
+
+  var canalLabels = { eshop: 'E-shop', popup: 'Pop-up', b2b: 'B2B', semimesure: 'Semi-mesure', autre: 'Autre' };
+  var canalColors = { eshop: '#1A4F8A', popup: '#2D6A1F', b2b: '#7A4A0A', semimesure: '#5A1A8A', autre: '#6B6A66' };
+
+  var page = document.getElementById('page-ventes');
+  if (!page) return;
+
+  var maxMois = Math.max.apply(null, v.months.map(function(m) { return m.ca; })) || 1;
+  var maxCanal = Math.max.apply(null, Object.values(v.canaux)) || 1;
+
+  page.innerHTML =
+    // KPIs
+    '<div class="grid4" style="margin-bottom:16px">' +
+      '<div class="metric"><div class="metric-label">CA total commandes</div><div class="metric-value">' + f(v.caTotal) + '</div><div class="metric-sub">' + v.nbCommandes + ' commandes</div></div>' +
+      '<div class="metric"><div class="metric-label">CA encaisse ce mois</div><div class="metric-value" style="color:#2D6A1F">' + f(v.caMois) + '</div><div class="metric-sub">Transactions saisies</div></div>' +
+      '<div class="metric"><div class="metric-label">Panier moyen</div><div class="metric-value">' + f(v.panierMoyen) + '</div><div class="metric-sub">Toutes commandes</div></div>' +
+      '<div class="metric"><div class="metric-label">Encaissements prevus</div><div class="metric-value" style="color:#7A4A0A">' + f(v.caAttendu) + '</div><div class="metric-sub">Ponderes probabilite</div></div>' +
+    '</div>' +
+
+    // Evolution + canaux
+    '<div class="grid2" style="margin-bottom:14px">' +
+
+      // Evolution mensuelle
+      '<div class="card">' +
+        '<div class="card-title">Evolution CA — 6 derniers mois</div>' +
+        (v.months.every(function(m) { return m.ca === 0; })
+          ? '<div style="font-size:12px;color:#A8A7A3;padding:20px 0;text-align:center">Saisis tes transactions en Tresorerie pour voir l\'evolution</div>'
+          : v.months.map(function(m) {
+              var pct = Math.round(m.ca / maxMois * 100);
+              return '<div class="bar-row"><div class="bar-lbl" style="font-size:11px">' + m.label + '</div>' +
+                '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:#111110"></div></div>' +
+                '<div class="bar-val">' + (m.ca > 0 ? f(m.ca) : '—') + '</div></div>';
+            }).join('')
+        ) +
+      '</div>' +
+
+      // CA par canal
+      '<div class="card">' +
+        '<div class="card-title">CA par canal</div>' +
+        Object.keys(canalLabels).filter(function(k) { return v.canaux[k] > 0; }).map(function(k) {
+          var pct = Math.round(v.canaux[k] / maxCanal * 100);
+          var pctTotal = v.caTotal > 0 ? Math.round(v.canaux[k] / v.caTotal * 100) : 0;
+          return '<div class="bar-row"><div class="bar-lbl">' + canalLabels[k] + '</div>' +
+            '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:' + canalColors[k] + '"></div></div>' +
+            '<div class="bar-val" style="font-size:11px">' + f(v.canaux[k]) + ' <span style="color:#A8A7A3">(' + pctTotal + '%)</span></div></div>';
+        }).join('') +
+        (!Object.values(v.canaux).some(function(v2) { return v2 > 0; })
+          ? '<div style="font-size:12px;color:#A8A7A3;padding:20px 0;text-align:center">Ajoute des commandes pour voir la repartition par canal</div>'
+          : '') +
+      '</div>' +
+    '</div>' +
+
+    // Meilleures ventes + saisie rapide
+    '<div class="grid2">' +
+      '<div class="card">' +
+        '<div class="row-between" style="margin-bottom:12px">' +
+          '<div class="card-title" style="margin:0">Meilleures ventes</div>' +
+        '</div>' +
+        (v.topPieces.length
+          ? '<table><thead><tr><th>Piece</th><th>Qte</th><th>CA</th></tr></thead><tbody>' +
+            v.topPieces.map(function(p) {
+              return '<tr><td>' + p.name + '</td><td>' + p.qty + '</td><td>' + f(p.ca) + '</td></tr>';
+            }).join('') +
+            '</tbody></table>'
+          : '<div style="font-size:12px;color:#A8A7A3;padding:20px 0;text-align:center">Pas encore de commandes saisies</div>'
+        ) +
+      '</div>' +
+
+      // Saisie rapide vente
+      '<div class="card">' +
+        '<div class="card-title">Saisie rapide — Vente</div>' +
+        '<div class="form-group"><label class="form-label">Canal</label>' +
+          '<select class="form-input" id="vente-canal">' +
+            '<option value="E-shop">E-shop</option>' +
+            '<option value="Pop-up">Pop-up</option>' +
+            '<option value="B2B">B2B</option>' +
+            '<option value="Semi-mesure">Semi-mesure</option>' +
+          '</select></div>' +
+        '<div class="form-group"><label class="form-label">Piece vendue</label>' +
+          '<input class="form-input" id="vente-piece" placeholder="Ex : Futal denim M"></div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label class="form-label">Montant (€)</label>' +
+            '<input class="form-input" type="number" id="vente-montant" placeholder="0"></div>' +
+          '<div class="form-group"><label class="form-label">Client</label>' +
+            '<input class="form-input" id="vente-client" placeholder="Prenom Nom"></div>' +
+        '</div>' +
+        '<div class="form-group"><label class="form-label">Date</label>' +
+          '<input class="form-input" type="date" id="vente-date"></div>' +
+        '<button class="btn primary" onclick="saveVenteRapide()" style="width:100%;justify-content:center;margin-top:4px">+ Enregistrer la vente</button>' +
+        '<div style="font-size:11px;color:#A8A7A3;margin-top:8px">Cree automatiquement une commande + une transaction en tresorerie</div>' +
+      '</div>' +
+    '</div>';
+
+  // Date par defaut
+  var dateEl = document.getElementById('vente-date');
+  if (dateEl) dateEl.value = new Date().toISOString().split('T')[0];
+}
+
+// ── SAISIE RAPIDE VENTE ───────────────────────────────────
+window.saveVenteRapide = function() {
+  var canal   = document.getElementById('vente-canal').value;
+  var piece   = document.getElementById('vente-piece').value.trim();
+  var montant = parseFloat(document.getElementById('vente-montant').value) || 0;
+  var client  = document.getElementById('vente-client').value.trim();
+  var date    = document.getElementById('vente-date').value;
+
+  if (!piece)   { document.getElementById('vente-piece').focus(); return; }
+  if (!montant) { document.getElementById('vente-montant').focus(); return; }
+  if (!client)  { document.getElementById('vente-client').focus(); return; }
+
+  // Creer la commande
+  var cmdId = '#' + String(S.orders.length + 200);
+  S.orders.unshift({
+    id: cmdId, client: client, piece: piece,
+    amount: montant, canal: canal, status: 'En preparation'
+  });
+
+  // Creer la transaction tresorerie
+  S.transactions.unshift({
+    type: 'in',
+    desc: 'Vente ' + canal + ' — ' + piece + ' (' + client + ')',
+    amount: montant,
+    date: date
+  });
+  S.cash += montant;
+
+  persist();
+  if (typeof sbSaveAll === 'function') sbSaveAll();
+  if (typeof updateSidebar === 'function') updateSidebar();
+  if (typeof journalLog === 'function') journalLog('creation', 'Vente : ' + piece + ' — ' + client + ' — ' + montant + ' EUR');
+
+  toast('Vente enregistree ! Commande ' + cmdId + ' creee.');
+  rVentes();
+};
+
+// ── OVERRIDE goTo ─────────────────────────────────────────
+var _goToV25 = goTo;
+goTo = function(page) {
+  _goToV25(page);
+  if (page === 'ventes') rVentes();
+};
+
+// Init si on est deja sur la page ventes
+if (document.getElementById('page-ventes') &&
+    document.getElementById('page-ventes').classList.contains('active')) {
+  rVentes();
+}
+
+})();
+      </script>  
 </body>
   <script>
     // ══════════════════════════════════════════════════════════

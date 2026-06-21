@@ -4558,7 +4558,389 @@ if (document.getElementById('page-ventes') &&
 }
 
 })();
-      </script>  
+      </script> 
+  <script>
+    // ══════════════════════════════════════════════════════════
+// V2.5 — IMPORT CSV BANQUE
+// Compatible : BNP, Crédit Agricole, Société Générale,
+//              Boursorama, Qonto, Shine, LCL, CIC
+// ══════════════════════════════════════════════════════════
+(function() {
+
+// ── INJECTER LA MODALE D'IMPORT ──────────────────────────
+if (!document.getElementById('modal-import-banque')) {
+  var m = document.createElement('div');
+  m.id = 'modal-import-banque';
+  m.className = 'modal-overlay';
+  m.innerHTML =
+    '<div class="modal" style="max-width:600px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+        '<div class="modal-title" style="margin:0">Import relevé bancaire</div>' +
+        '<button id="import-banque-close" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6B6A66">&#215;</button>' +
+      '</div>' +
+
+      // Instructions
+      '<div style="background:#F7F6F2;border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:#6B6A66;line-height:1.7">' +
+        '<strong style="color:#111110">Comment exporter ton CSV depuis ta banque :</strong><br>' +
+        'Boursorama / BNP / CA / SG : Espace client → Mes comptes → Télécharger / Exporter → CSV ou Excel<br>' +
+        'Qonto / Shine : Transactions → Exporter → CSV<br>' +
+        'Le fichier doit contenir au minimum : une date, un libellé, et un montant.' +
+      '</div>' +
+
+      // Sélecteur banque
+      '<div class="form-group">' +
+        '<label class="form-label">Ma banque</label>' +
+        '<select class="form-input" id="import-banque-type">' +
+          '<option value="auto">Détection automatique</option>' +
+          '<option value="qonto">Qonto / Shine</option>' +
+          '<option value="boursorama">Boursorama</option>' +
+          '<option value="bnp">BNP Paribas</option>' +
+          '<option value="ca">Crédit Agricole</option>' +
+          '<option value="sg">Société Générale</option>' +
+          '<option value="lcl">LCL / CIC</option>' +
+          '<option value="generic">Autre (format générique)</option>' +
+        '</select>' +
+      '</div>' +
+
+      // Upload fichier
+      '<div class="form-group">' +
+        '<label class="form-label">Fichier CSV ou Excel exporté</label>' +
+        '<input type="file" id="import-banque-file" accept=".csv,.txt,.xls,.xlsx" ' +
+          'style="width:100%;padding:10px;border:2px dashed rgba(0,0,0,0.15);border-radius:8px;font-size:13px;cursor:pointer;background:#F7F6F2">' +
+      '</div>' +
+
+      // Options
+      '<div class="form-row">' +
+        '<div class="form-group">' +
+          '<label class="form-label">Ignorer les doublons</label>' +
+          '<select class="form-input" id="import-banque-dupes">' +
+            '<option value="1">Oui (recommandé)</option>' +
+            '<option value="0">Non</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="form-group">' +
+          '<label class="form-label">Mettre à jour le solde</label>' +
+          '<select class="form-input" id="import-banque-solde">' +
+            '<option value="1">Oui</option>' +
+            '<option value="0">Non</option>' +
+          '</select>' +
+        '</div>' +
+      '</div>' +
+
+      // Preview
+      '<div id="import-banque-preview" style="display:none;margin-bottom:14px">' +
+        '<div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;color:#A8A7A3;margin-bottom:8px">Aperçu des transactions détectées</div>' +
+        '<div id="import-banque-preview-list" style="max-height:200px;overflow-y:auto;border:1px solid rgba(0,0,0,0.08);border-radius:8px"></div>' +
+        '<div id="import-banque-summary" style="font-size:12px;color:#6B6A66;margin-top:8px"></div>' +
+      '</div>' +
+
+      '<div style="display:flex;gap:10px;margin-top:4px">' +
+        '<button class="btn" id="import-banque-cancel" style="flex:1;justify-content:center">Annuler</button>' +
+        '<button class="btn primary" id="import-banque-confirm" style="flex:1;justify-content:center" disabled>Importer</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(m);
+
+  // Events
+  document.getElementById('import-banque-close').addEventListener('click', closeAllModals);
+  document.getElementById('import-banque-cancel').addEventListener('click', closeAllModals);
+  m.addEventListener('click', function(e) { if (e.target === m) closeAllModals(); });
+  document.getElementById('import-banque-file').addEventListener('change', onFileSelected);
+  document.getElementById('import-banque-confirm').addEventListener('click', confirmImport);
+}
+
+var _parsedTx = [];
+
+// ── PARSEURS CSV PAR BANQUE ───────────────────────────────
+function parseCSV(text) {
+  var lines = text.split(/\r?\n/).filter(function(l) { return l.trim(); });
+  if (!lines.length) return [];
+
+  // Détecter le séparateur
+  var sep = ',';
+  var firstLine = lines[0];
+  if ((firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length) sep = ';';
+
+  return lines.map(function(line) {
+    var parts = [];
+    var current = '';
+    var inQuotes = false;
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (c === '"') { inQuotes = !inQuotes; }
+      else if (c === sep && !inQuotes) { parts.push(current.trim().replace(/^"|"$/g, '')); current = ''; }
+      else { current += c; }
+    }
+    parts.push(current.trim().replace(/^"|"$/g, ''));
+    return parts;
+  });
+}
+
+function parseDate(str) {
+  if (!str) return null;
+  str = str.trim();
+  // DD/MM/YYYY ou DD/MM/YY
+  var m = str.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+  if (m) {
+    var y = m[3].length === 2 ? '20' + m[3] : m[3];
+    return y + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+  }
+  // YYYY-MM-DD
+  var m2 = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m2) return m2[1] + '-' + m2[2] + '-' + m2[3];
+  return null;
+}
+
+function parseMontant(str) {
+  if (!str) return null;
+  var s = str.toString().replace(/\s/g, '').replace(/€/g, '').replace(/EUR/g, '');
+  // Gérer virgule décimale française
+  s = s.replace(/\.(\d{3})/g, '$1').replace(',', '.');
+  var n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+function detectAndParse(rows, banqueType) {
+  if (!rows.length) return [];
+  var header = rows[0].map(function(h) { return h.toLowerCase().trim(); });
+
+  // Indices des colonnes clés
+  function findCol(keywords) {
+    for (var i = 0; i < header.length; i++) {
+      for (var k = 0; k < keywords.length; k++) {
+        if (header[i].includes(keywords[k])) return i;
+      }
+    }
+    return -1;
+  }
+
+  var dateCol    = findCol(['date', 'jour']);
+  var labelCol   = findCol(['libelle', 'label', 'description', 'motif', 'operation', 'intitule', 'detail']);
+  var debitCol   = findCol(['debit', 'sortie', 'depense', 'montant debit']);
+  var creditCol  = findCol(['credit', 'entree', 'recette', 'montant credit']);
+  var montantCol = findCol(['montant', 'amount', 'valeur']);
+
+  var results = [];
+  for (var i = 1; i < rows.length; i++) {
+    var row = rows[i];
+    if (!row || row.length < 2) continue;
+
+    var date = dateCol >= 0 ? parseDate(row[dateCol]) : null;
+    if (!date) {
+      // Essayer de trouver une date dans la ligne
+      for (var j = 0; j < row.length; j++) {
+        date = parseDate(row[j]);
+        if (date) break;
+      }
+    }
+    if (!date) continue;
+
+    var label = labelCol >= 0 ? row[labelCol] : '';
+    if (!label) {
+      // Prendre la colonne la plus longue
+      var maxLen = 0;
+      for (var j = 0; j < row.length; j++) {
+        if (row[j] && row[j].length > maxLen && !parseDate(row[j]) && isNaN(parseMontant(row[j]))) {
+          maxLen = row[j].length; label = row[j];
+        }
+      }
+    }
+    if (!label) continue;
+
+    var montant = null;
+    var type = 'out';
+
+    if (debitCol >= 0 && creditCol >= 0) {
+      var debit  = parseMontant(row[debitCol]);
+      var credit = parseMontant(row[creditCol]);
+      if (credit && credit > 0) { montant = credit; type = 'in'; }
+      else if (debit && debit !== 0) { montant = Math.abs(debit); type = 'out'; }
+    } else if (montantCol >= 0) {
+      montant = parseMontant(row[montantCol]);
+      if (montant !== null) {
+        if (montant < 0) { montant = Math.abs(montant); type = 'out'; }
+        else { type = 'in'; }
+      }
+    }
+
+    if (!montant || montant === 0) continue;
+
+    results.push({
+      date: date,
+      desc: label.substring(0, 80),
+      amount: Math.round(montant * 100) / 100,
+      type: type
+    });
+  }
+  return results;
+}
+
+// ── LECTURE DU FICHIER ────────────────────────────────────
+function onFileSelected(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var text = ev.target.result;
+    var rows = parseCSV(text);
+    var banqueType = document.getElementById('import-banque-type').value;
+    _parsedTx = detectAndParse(rows, banqueType);
+    showPreview(_parsedTx);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function showPreview(txs) {
+  var preview = document.getElementById('import-banque-preview');
+  var list    = document.getElementById('import-banque-preview-list');
+  var summary = document.getElementById('import-banque-summary');
+  var btn     = document.getElementById('import-banque-confirm');
+
+  if (!txs.length) {
+    preview.style.display = 'block';
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:#8C2222;font-size:13px">Aucune transaction détectée. Essaie de sélectionner ta banque manuellement.</div>';
+    btn.disabled = true;
+    return;
+  }
+
+  // Filtrer les doublons existants
+  var existingKeys = {};
+  S.transactions.forEach(function(t) {
+    existingKeys[t.date + '_' + t.amount + '_' + t.type] = true;
+  });
+
+  var ignoreDupes = document.getElementById('import-banque-dupes').value === '1';
+  var news = txs.filter(function(t) {
+    return !ignoreDupes || !existingKeys[t.date + '_' + t.amount + '_' + t.type];
+  });
+
+  var totalIn  = news.filter(function(t){return t.type==='in';}).reduce(function(s,t){return s+t.amount;},0);
+  var totalOut = news.filter(function(t){return t.type==='out';}).reduce(function(s,t){return s+t.amount;},0);
+  var dupes    = txs.length - news.length;
+
+  list.innerHTML = news.slice(0, 20).map(function(t) {
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid rgba(0,0,0,0.05);font-size:12px">' +
+      '<div><div style="font-weight:500">' + t.desc + '</div><div style="color:#A8A7A3;margin-top:1px">' + t.date + '</div></div>' +
+      '<span style="font-weight:500;color:' + (t.type==='in'?'#2D6A1F':'#8C2222') + ';flex-shrink:0;margin-left:12px">' +
+        (t.type==='in'?'+':'-') + t.amount.toLocaleString('fr-FR') + ' €' +
+      '</span></div>';
+  }).join('') + (news.length > 20 ? '<div style="padding:8px 12px;font-size:11px;color:#A8A7A3;text-align:center">... et ' + (news.length-20) + ' autres</div>' : '');
+
+  summary.innerHTML =
+    '<strong>' + news.length + '</strong> transactions à importer' +
+    (dupes > 0 ? ' · <span style="color:#A8A7A3">' + dupes + ' doublons ignorés</span>' : '') +
+    ' · <span style="color:#2D6A1F">+' + Math.round(totalIn).toLocaleString('fr-FR') + ' €</span>' +
+    ' · <span style="color:#8C2222">-' + Math.round(totalOut).toLocaleString('fr-FR') + ' €</span>';
+
+  preview.style.display = 'block';
+  btn.disabled = news.length === 0;
+  btn._toImport = news;
+}
+
+// ── IMPORT FINAL ──────────────────────────────────────────
+function confirmImport() {
+  var btn = document.getElementById('import-banque-confirm');
+  var txs = btn._toImport || [];
+  if (!txs.length) return;
+
+  var updateSolde = document.getElementById('import-banque-solde').value === '1';
+  var soldeChange = 0;
+
+  txs.forEach(function(t) {
+    S.transactions.unshift(t);
+    if (updateSolde) {
+      if (t.type === 'in') soldeChange += t.amount;
+      else soldeChange -= t.amount;
+    }
+  });
+
+  if (updateSolde) S.cash += soldeChange;
+
+  persist();
+  if (typeof sbSaveAll === 'function') sbSaveAll();
+  if (typeof updateSidebar === 'function') updateSidebar();
+  if (typeof journalLog === 'function') journalLog('creation', txs.length + ' transactions importees depuis le releve bancaire');
+
+  closeAllModals();
+  toast(txs.length + ' transactions importees !');
+
+  // Refresh tresorerie si on y est
+  var activePage = document.querySelector('.page.active');
+  if (activePage && activePage.id === 'page-tresorerie') {
+    if (typeof renderTresorerie === 'function') renderTresorerie();
+    if (typeof rTresoButtons === 'function') rTresoButtons();
+  }
+  if (activePage && activePage.id === 'page-ventes') {
+    if (typeof rVentes === 'function') rVentes();
+  }
+}
+
+// ── INJECTER LE BOUTON DANS PARAMÈTRES ───────────────────
+function injectImportBtn() {
+  // Dans Trésorerie — bouton dans la topbar
+  var t = document.getElementById('topbar');
+  if (t && !document.getElementById('btn-import-banque')) {
+    var btn = document.createElement('button');
+    btn.id = 'btn-import-banque';
+    btn.className = 'btn';
+    btn.innerHTML = '&#8595; Import banque';
+    btn.style.cssText = 'font-size:12px;white-space:nowrap';
+    btn.addEventListener('click', openImportBanque);
+    // Insérer avant le bouton Export CSV
+    var exportBtn = t.querySelector('[onclick="exportCSV()"]');
+    if (exportBtn) t.insertBefore(btn, exportBtn);
+    else t.appendChild(btn);
+  }
+
+  // Dans Paramètres — section dédiée
+  var paramCard = document.querySelector('#page-parametres .card');
+  if (paramCard && !document.getElementById('import-banque-section')) {
+    var sec = document.createElement('div');
+    sec.id = 'import-banque-section';
+    sec.style.cssText = 'border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:16px 18px;margin-top:14px';
+    sec.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
+        '<div>' +
+          '<div style="font-size:14px;font-weight:500;margin-bottom:3px">Import relevé bancaire</div>' +
+          '<div style="font-size:12px;color:#6B6A66">Importe tes transactions depuis un export CSV de ta banque</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="font-size:12px;color:#6B6A66;background:#F7F6F2;border-radius:8px;padding:10px;margin-bottom:12px;line-height:1.6">' +
+        'Compatible Qonto, Shine, Boursorama, BNP, Crédit Agricole, Société Générale, LCL, CIC<br>' +
+        'Exporte ton relevé en CSV depuis ton espace client, puis importe-le ici en 1 clic.' +
+      '</div>' +
+      '<button class="btn primary" onclick="openImportBanque()" style="font-size:13px;padding:8px 16px">&#8595; Importer un relevé CSV</button>';
+    paramCard.appendChild(sec);
+  }
+}
+
+window.openImportBanque = function() {
+  // Reset
+  var fileEl = document.getElementById('import-banque-file');
+  if (fileEl) fileEl.value = '';
+  var preview = document.getElementById('import-banque-preview');
+  if (preview) preview.style.display = 'none';
+  var btn = document.getElementById('import-banque-confirm');
+  if (btn) { btn.disabled = true; btn._toImport = []; }
+  _parsedTx = [];
+  closeAllModals();
+  var modal = document.getElementById('modal-import-banque');
+  if (modal) modal.classList.add('open');
+};
+
+// ── OVERRIDE goTo POUR INJECTER LE BOUTON ─────────────────
+var _goToImport = goTo;
+goTo = function(page) {
+  _goToImport(page);
+  setTimeout(injectImportBtn, 100);
+};
+
+// Init
+setTimeout(injectImportBtn, 800);
+
+})();
+  </script>
 </body>
   <script>
     // ══════════════════════════════════════════════════════════

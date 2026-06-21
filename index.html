@@ -3918,7 +3918,132 @@ onLoginSuccess = function() {
 })();
 
 </script>
+<script>
+// ══════════════════════════════════════════════════════════
+// V2.4 — VUE AGENDA MOIS COMPLÈTE
+// ══════════════════════════════════════════════════════════
+(function() {
 
+var _rAgendaBase = rAgenda;
+rAgenda = function() {
+  _rAgendaBase();
+  if (typeof AGENDA_MODE === 'undefined' || AGENDA_MODE !== 'mois') return;
+  renderMoisView();
+};
+
+function renderMoisView() {
+  var today = new Date();
+  var annee = today.getFullYear();
+  var mois  = today.getMonth();
+
+  // Titre
+  var moisNoms = ['Janvier','Fevrier','Mars','Avril','Mai','Juin','Juillet','Aout','Septembre','Octobre','Novembre','Decembre'];
+  var titreEl = document.getElementById('agenda-titre');
+  var stEl    = document.getElementById('agenda-sous-titre');
+  if (titreEl) titreEl.textContent = moisNoms[mois] + ' ' + annee;
+  if (stEl)    stEl.textContent = '';
+
+  // Premier et dernier jour du mois
+  var premier = new Date(annee, mois, 1);
+  var dernier = new Date(annee, mois + 1, 0);
+
+  // Collecter tous les items du mois
+  function getItemsDate(dateStr) {
+    var items = [];
+    // Taches avec echeance
+    (S.tachesPro || []).filter(function(t) {
+      return t.echeance === dateStr && t.statut !== 'terminee' && t.statut !== 'archivee';
+    }).forEach(function(t) {
+      items.push({label: t.titre, color: t.priorite === 'haute' ? '#8C2222' : '#1A4F8A', icon: 'check'});
+    });
+    // Evenements calendrier
+    (S.evts || []).filter(function(e) { return e.dt === dateStr; }).forEach(function(e) {
+      items.push({label: e.ti, color: e.ur === 'urgent' ? '#8C2222' : '#7A4A0A', icon: 'cal'});
+    });
+    // Depenses prevues
+    (S.depPrevues || []).filter(function(d) { return d.date === dateStr; }).forEach(function(d) {
+      items.push({label: d.desc, color: '#6B6A66', icon: 'dep'});
+    });
+    // Encaissements attendus
+    (S.encaissements || []).filter(function(e) { return e.date === dateStr; }).forEach(function(e) {
+      items.push({label: e.desc, color: '#2D6A1F', icon: 'enc'});
+    });
+    return items;
+  }
+
+  // Construire la grille
+  var jours = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  var todayStr = today.toISOString().split('T')[0];
+
+  var html = '<div style="margin-bottom:14px">';
+  // En-tetes jours
+  html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">';
+  jours.forEach(function(j) {
+    html += '<div style="text-align:center;font-size:10px;font-weight:500;text-transform:uppercase;color:#A8A7A3;padding:4px 0">' + j + '</div>';
+  });
+  html += '</div>';
+
+  // Grille des jours
+  html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">';
+
+  // Decalage debut (lundi = 0)
+  var debutSemaine = premier.getDay() === 0 ? 6 : premier.getDay() - 1;
+  for (var d = 0; d < debutSemaine; d++) {
+    html += '<div style="min-height:70px;background:rgba(0,0,0,0.02);border-radius:6px"></div>';
+  }
+
+  // Jours du mois
+  for (var jour = 1; jour <= dernier.getDate(); jour++) {
+    var date = new Date(annee, mois, jour);
+    var dateStr = date.toISOString().split('T')[0];
+    var isToday = dateStr === todayStr;
+    var items = getItemsDate(dateStr);
+
+    html += '<div style="min-height:70px;background:' + (isToday ? '#fff' : '#F7F6F2') + ';border-radius:6px;padding:5px;border:' + (isToday ? '1.5px solid #111110' : '1px solid rgba(0,0,0,0.06)') + '">';
+    html += '<div style="font-size:12px;font-weight:' + (isToday ? '600' : '400') + ';color:' + (isToday ? '#111110' : '#6B6A66') + ';margin-bottom:3px">' + jour + '</div>';
+    items.slice(0, 2).forEach(function(item) {
+      html += '<div style="font-size:10px;padding:2px 4px;border-radius:3px;margin-bottom:2px;background:' + item.color + '20;color:' + item.color + ';line-height:1.3;overflow:hidden;white-space:nowrap;text-overflow:ellipsis" title="' + item.label + '">' + item.label + '</div>';
+    });
+    if (items.length > 2) {
+      html += '<div style="font-size:10px;color:#A8A7A3">+' + (items.length - 2) + ' autres</div>';
+    }
+    html += '</div>';
+  }
+
+  // Remplir la fin
+  var fin = (debutSemaine + dernier.getDate()) % 7;
+  if (fin > 0) {
+    for (var f = fin; f < 7; f++) {
+      html += '<div style="min-height:70px;background:rgba(0,0,0,0.02);border-radius:6px"></div>';
+    }
+  }
+
+  html += '</div></div>';
+
+  // Injecter dans la vue semaine (on remplace la grille existante)
+  var gridEl = document.getElementById('agenda-semaine-view');
+  if (gridEl) gridEl.innerHTML = html;
+}
+
+// Override filterAgenda pour declencher le bon render
+var _filterAgendaBase = filterAgenda;
+filterAgenda = function(mode) {
+  AGENDA_MODE = mode;
+  var tabs = document.querySelectorAll('[onclick^="filterAgenda"]');
+  tabs.forEach(function(t) {
+    t.classList.toggle('active', t.getAttribute('onclick').includes(mode));
+  });
+  if (mode === 'mois') {
+    // Render base d'abord pour les KPIs/agregee, puis vue mois
+    if (typeof _rAgendaBase === 'function') _rAgendaBase();
+    renderMoisView();
+  } else {
+    if (typeof _rAgendaBase === 'function') _rAgendaBase();
+  }
+};
+
+})();
+  </script>
 </body>
   <script>
     // ══════════════════════════════════════════════════════════

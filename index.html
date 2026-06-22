@@ -5605,6 +5605,276 @@ goTo = function(page) {
 
 })();
   </script>
+  <script>
+    // ══════════════════════════════════════════════════════════
+// V2.7 — CATALOGUE PRESTATIONS + EMAIL AUTO PRESTATAIRE
+// ══════════════════════════════════════════════════════════
+(function() {
+
+// ── CATALOGUE DE PRESTATIONS PAR PRESTATAIRE ─────────────
+// Ajouter un champ "prestations" dans chaque prestataire
+// Structure : [{id, nom, tarif, unite, notes}]
+
+// ── INJECTER CSS CATALOGUE ────────────────────────────────
+var style = document.createElement('style');
+style.textContent = `
+.presta-catalogue { margin-top: 12px; border-top: 1px solid rgba(0,0,0,0.07); padding-top: 12px; }
+.catalogue-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,0.05); font-size: 12px; }
+.catalogue-item:last-child { border-bottom: none; }
+.catalogue-nom { flex: 1; font-weight: 500; color: #111110; }
+.catalogue-tarif { color: #2D6A1F; font-weight: 500; white-space: nowrap; }
+.catalogue-unite { color: #A8A7A3; font-size: 10px; }
+`;
+document.head.appendChild(style);
+
+// ── MODALE CATALOGUE ──────────────────────────────────────
+(function injectModalCatalogue() {
+  if (document.getElementById('modal-catalogue')) return;
+  var m = document.createElement('div');
+  m.id = 'modal-catalogue';
+  m.className = 'modal-overlay';
+  m.innerHTML =
+    '<div class="modal" style="max-width:520px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+        '<div class="modal-title" id="catalogue-modal-title" style="margin:0">Catalogue prestations</div>' +
+        '<button id="catalogue-close" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6B6A66">&#215;</button>' +
+      '</div>' +
+      '<input type="hidden" id="catalogue-presta-id">' +
+      '<div id="catalogue-list-items" style="margin-bottom:14px"></div>' +
+      '<div style="background:#F7F6F2;border-radius:8px;padding:14px;margin-bottom:14px">' +
+        '<div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;color:#A8A7A3;margin-bottom:10px">Ajouter une prestation</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label class="form-label">Nom de la prestation</label>' +
+            '<input class="form-input" id="cat-nom" placeholder="Ex : Assemblage futal"></div>' +
+          '<div class="form-group"><label class="form-label">Unite</label>' +
+            '<select class="form-input" id="cat-unite">' +
+              '<option value="piece">par piece</option>' +
+              '<option value="heure">par heure</option>' +
+              '<option value="jour">par jour</option>' +
+              '<option value="lot">par lot</option>' +
+              '<option value="forfait">forfait</option>' +
+            '</select></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+          '<div class="form-group"><label class="form-label">Tarif (EUR)</label>' +
+            '<input class="form-input" type="number" id="cat-tarif" placeholder="0"></div>' +
+          '<div class="form-group"><label class="form-label">Notes</label>' +
+            '<input class="form-input" id="cat-notes" placeholder="Optionnel"></div>' +
+        '</div>' +
+        '<button class="btn primary" onclick="addCatalogueItem()" style="width:100%;justify-content:center">+ Ajouter au catalogue</button>' +
+      '</div>' +
+      '<button class="btn" onclick="closeAllModals()" style="width:100%;justify-content:center">Fermer</button>' +
+    '</div>';
+  document.body.appendChild(m);
+  document.getElementById('catalogue-close').addEventListener('click', closeAllModals);
+  m.addEventListener('click', function(e) { if (e.target === m) closeAllModals(); });
+})();
+
+// ── OUVRIR CATALOGUE ──────────────────────────────────────
+window.openCatalogue = function(prestaId) {
+  document.getElementById('catalogue-presta-id').value = prestaId;
+  var p = S.prestas.find(function(p) { return p.id === prestaId; });
+  if (!p) return;
+  var ti = document.getElementById('catalogue-modal-title');
+  if (ti) ti.textContent = 'Prestations — ' + p.name;
+  // Reset form
+  document.getElementById('cat-nom').value = '';
+  document.getElementById('cat-tarif').value = '';
+  document.getElementById('cat-notes').value = '';
+  document.getElementById('cat-unite').value = 'piece';
+  renderCatalogueItems(p);
+  closeAllModals();
+  var modal = document.getElementById('modal-catalogue');
+  if (modal) modal.classList.add('open');
+};
+
+function renderCatalogueItems(p) {
+  var list = document.getElementById('catalogue-list-items');
+  if (!list) return;
+  var items = p.catalogue || [];
+  if (!items.length) {
+    list.innerHTML = '<div style="text-align:center;padding:16px 0;color:#A8A7A3;font-size:12px">Aucune prestation configuree. Ajoute-en une ci-dessous.</div>';
+    return;
+  }
+  list.innerHTML = '<div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;color:#A8A7A3;margin-bottom:8px">Catalogue actuel</div>' +
+    items.map(function(item, i) {
+      return '<div class="catalogue-item">' +
+        '<div class="catalogue-nom">' + item.nom + '</div>' +
+        '<div class="catalogue-tarif">' + item.tarif + ' EUR</div>' +
+        '<div class="catalogue-unite">/ ' + item.unite + '</div>' +
+        (item.notes ? '<div style="font-size:10px;color:#A8A7A3">' + item.notes + '</div>' : '') +
+        '<button class="btn-x" onclick="delCatalogueItem(\'' + p.id + '\',' + i + ')" style="flex-shrink:0">&#215;</button>' +
+      '</div>';
+    }).join('');
+}
+
+window.addCatalogueItem = function() {
+  var pid = document.getElementById('catalogue-presta-id').value;
+  var p = S.prestas.find(function(p) { return p.id === pid; });
+  if (!p) return;
+  var nom = document.getElementById('cat-nom').value.trim();
+  if (!nom) { document.getElementById('cat-nom').focus(); return; }
+  var tarif = parseFloat(document.getElementById('cat-tarif').value) || 0;
+  if (!tarif) { document.getElementById('cat-tarif').focus(); return; }
+  if (!p.catalogue) p.catalogue = [];
+  p.catalogue.push({
+    id: 'c' + Date.now(),
+    nom: nom,
+    tarif: tarif,
+    unite: document.getElementById('cat-unite').value,
+    notes: document.getElementById('cat-notes').value.trim()
+  });
+  savePrestas();
+  renderCatalogueItems(p);
+  document.getElementById('cat-nom').value = '';
+  document.getElementById('cat-tarif').value = '';
+  document.getElementById('cat-notes').value = '';
+  toast('Prestation ajoutee !');
+};
+
+window.delCatalogueItem = function(pid, i) {
+  var p = S.prestas.find(function(p) { return p.id === pid; });
+  if (!p || !p.catalogue) return;
+  p.catalogue.splice(i, 1);
+  savePrestas();
+  renderCatalogueItems(p);
+};
+
+// ── ENRICHIR LA MODALE MISSION AVEC LE CATALOGUE ─────────
+var _openMissionOrig = openMission;
+openMission = function(prestaId, mi) {
+  _openMissionOrig(prestaId, mi);
+  // Ajouter le sélecteur de prestation depuis le catalogue
+  setTimeout(function() {
+    if (document.getElementById('mission-catalogue-select')) return;
+    var p = S.prestas.find(function(p) { return p.id === prestaId; });
+    if (!p || !p.catalogue || !p.catalogue.length) return;
+    var descGroup = document.getElementById('mission-desc');
+    if (!descGroup) return;
+    var parent = descGroup.parentNode;
+    var selectDiv = document.createElement('div');
+    selectDiv.className = 'form-group';
+    selectDiv.innerHTML =
+      '<label class="form-label">Choisir depuis le catalogue</label>' +
+      '<select class="form-input" id="mission-catalogue-select">' +
+        '<option value="">-- Selectionner une prestation --</option>' +
+        (p.catalogue || []).map(function(c) {
+          return '<option value="' + c.id + '" data-tarif="' + c.tarif + '" data-nom="' + c.nom + '" data-unite="' + c.unite + '">' +
+            c.nom + ' — ' + c.tarif + ' EUR / ' + c.unite + '</option>';
+        }).join('') +
+      '</select>';
+    parent.insertBefore(selectDiv, parent.firstChild);
+    // Auto-remplir quand on selectionne
+    document.getElementById('mission-catalogue-select').addEventListener('change', function() {
+      var sel = this.options[this.selectedIndex];
+      if (!sel.value) return;
+      var nom = sel.getAttribute('data-nom');
+      var tarif = parseFloat(sel.getAttribute('data-tarif')) || 0;
+      var unite = sel.getAttribute('data-unite');
+      var descEl = document.getElementById('mission-desc');
+      if (descEl && !descEl.value) descEl.value = nom;
+      // Calculer le montant si on a une quantite
+      var qtyEl = document.getElementById('mission-qty');
+      var montantEl = document.getElementById('mission-montant');
+      if (qtyEl && montantEl) {
+        var qty = parseInt(qtyEl.value) || 1;
+        if (unite === 'piece' || unite === 'heure' || unite === 'jour' || unite === 'lot') {
+          montantEl.value = tarif * qty;
+        } else {
+          montantEl.value = tarif;
+        }
+      }
+    });
+    // Recalculer si on change la quantite
+    var qtyEl = document.getElementById('mission-qty');
+    if (qtyEl) {
+      qtyEl.addEventListener('input', function() {
+        var sel = document.getElementById('mission-catalogue-select');
+        if (!sel || !sel.value) return;
+        var tarif = parseFloat(sel.options[sel.selectedIndex].getAttribute('data-tarif')) || 0;
+        var montantEl = document.getElementById('mission-montant');
+        if (montantEl) montantEl.value = tarif * (parseInt(qtyEl.value) || 1);
+      });
+    }
+  }, 150);
+};
+
+// ── AJOUTER BOUTON CATALOGUE SUR CHAQUE FICHE PRESTA ─────
+var _rPrestatairesOrig = rPrestataires;
+rPrestataires = function() {
+  _rPrestatairesOrig();
+  // Ajouter bouton "Catalogue" sur chaque fiche
+  setTimeout(function() {
+    S.prestas.forEach(function(p) {
+      var cards = document.querySelectorAll('.presta-card');
+      cards.forEach(function(card) {
+        if (card.innerHTML.includes(p.name) && !card.querySelector('.btn-catalogue-' + p.id)) {
+          var btnZone = card.querySelector('.btn');
+          if (!btnZone) return;
+          var btn = document.createElement('button');
+          btn.className = 'btn btn-catalogue-' + p.id;
+          btn.style.cssText = 'font-size:11px;margin-left:6px';
+          btn.innerHTML = '&#9776; Catalogue (' + (p.catalogue ? p.catalogue.length : 0) + ')';
+          btn.addEventListener('click', function() { openCatalogue(p.id); });
+          btnZone.parentNode.insertBefore(btn, btnZone.nextSibling);
+        }
+      });
+    });
+  }, 100);
+};
+
+// ── EMAIL AUTOMATIQUE VIA VERCEL FUNCTION ─────────────────
+// Créer api/send-invite.js sur GitHub pour envoyer l'email
+
+// Fonction d'envoi d'invitation
+window.sendInviteEmail = async function(user) {
+  try {
+    var res = await fetch('/api/send-invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        url: window.location.origin,
+        password: 'changeme123'
+      })
+    });
+    if (res.ok) {
+      toast('Email d\'invitation envoye a ' + user.email + ' !');
+      if (typeof journalLog === 'function') journalLog('creation', 'Invitation envoyee a ' + user.name + ' (' + user.email + ')');
+      return true;
+    }
+    return false;
+  } catch(e) {
+    console.log('Email non envoye (api non configuree):', e);
+    return false;
+  }
+};
+
+// ── OVERRIDE saveUser POUR PROPOSER L'ENVOI D'EMAIL ──────
+var _saveUserCat = saveUser;
+saveUser = function() {
+  _saveUserCat();
+  // Apres sauvegarde, proposer d'envoyer l'email
+  var email = document.getElementById('user-email');
+  var name = document.getElementById('user-name');
+  var idx = document.getElementById('user-edit-id');
+  if (email && name && idx && idx.value === '') {
+    // Nouveau user → proposer l'envoi
+    var newUser = S.users[S.users.length - 1];
+    if (newUser && newUser.email) {
+      setTimeout(function() {
+        if (confirm('Envoyer un email d\'invitation a ' + newUser.name + ' (' + newUser.email + ') avec ses identifiants de connexion ?')) {
+          sendInviteEmail(newUser);
+        }
+      }, 300);
+    }
+  }
+};
+
+})();
+  </script>
 </body>
   <script>
     // ══════════════════════════════════════════════════════════

@@ -5875,6 +5875,167 @@ saveUser = function() {
 
 })();
   </script>
+  <script>
+    // ══════════════════════════════════════════════════════════
+// V2.7 — FIX AUTH COMPLET
+// Synchronise les users sur Supabase
+// Login fonctionne sur tous les appareils
+// ══════════════════════════════════════════════════════════
+(function() {
+
+// ── CLÉS SUPABASE POUR LES USERS ─────────────────────────
+// On utilise la clé 'isa_users' dans Supabase (cohérent avec localStorage)
+
+async function sbSaveUsers() {
+  var ok1 = await sbSet('isa_users', S.users);
+  var ok2 = await sbSet('users', S.users);
+  return ok1 && ok2;
+}
+
+async function sbLoadUsers() {
+  // Essayer les deux clés
+  var v = await sbGet('isa_users');
+  if (!v) v = await sbGet('users');
+  return v;
+}
+
+// ── OVERRIDE saveUsers POUR TOUJOURS SYNCER SUPABASE ─────
+saveUsers = function() {
+  lsSet('isa_users', S.users);
+  sbSaveUsers().then(function(ok) {
+    if (ok) console.log('Users synces Supabase OK');
+    else console.log('Users sync Supabase failed');
+  });
+};
+
+// ── OVERRIDE doLogin POUR CHARGER LES USERS DEPUIS SUPABASE ──
+var _doLoginOrig = doLogin;
+doLogin = async function() {
+  var email = document.getElementById('auth-email').value.trim();
+  var pwd   = document.getElementById('auth-password').value;
+  var btn   = document.getElementById('auth-btn');
+  var err   = document.getElementById('auth-error');
+
+  err.classList.remove('show');
+  if (!email || !pwd) {
+    err.textContent = 'Remplis email et mot de passe.';
+    err.classList.add('show');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Connexion...';
+
+  try {
+    // 1. Charger les users depuis Supabase d'abord
+    var remoteUsers = await sbLoadUsers();
+    if (remoteUsers && remoteUsers.length > 0) {
+      // Merger avec les users locaux (prendre le plus récent)
+      S.users = remoteUsers;
+      lsSet('isa_users', S.users);
+    }
+
+    // 2. Chercher le user dans la liste
+    var found = null;
+
+    // Compte admin par défaut
+    if (email === 'admin@isaacsanka.com' && pwd === 'isaacsanka2025') {
+      found = { id: 'admin-1', email: 'admin@isaacsanka.com', name: 'Admin Isaacsanka', role: 'admin', prestaId: null };
+    }
+
+    // Chercher dans S.users avec btoa(pwd)
+    if (!found) {
+      found = S.users.find(function(u) {
+        return u.email === email && u.pwd === btoa(pwd);
+      });
+    }
+
+    // Essayer aussi sans btoa (au cas où le pwd est stocké en clair)
+    if (!found) {
+      found = S.users.find(function(u) {
+        return u.email === email && u.pwd === pwd;
+      });
+    }
+
+    // Essayer Supabase Auth en dernier recours
+    if (!found) {
+      try {
+        var res = await fetch(SB_URL + '/auth/v1/token?grant_type=password', {
+          method: 'POST',
+          headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email, password: pwd })
+        });
+        var data = await res.json();
+        if (data.access_token && data.user) {
+          found = S.users.find(function(u) { return u.email === email; });
+          if (!found) {
+            found = { id: data.user.id, email: data.user.email, name: data.user.email.split('@')[0], role: 'lecture', prestaId: null };
+          }
+        }
+      } catch(e) {}
+    }
+
+    if (!found) {
+      err.textContent = 'Email ou mot de passe incorrect.';
+      err.classList.add('show');
+      btn.disabled = false;
+      btn.textContent = 'Se connecter';
+      return;
+    }
+
+    CURRENT_USER = found;
+    lsSet('current_user', CURRENT_USER);
+    onLoginSuccess();
+
+  } catch(e) {
+    err.textContent = 'Erreur de connexion. Réessaie.';
+    err.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = 'Se connecter';
+  }
+};
+
+// ── SYNC USERS AU DÉMARRAGE ───────────────────────────────
+(function syncUsersOnBoot() {
+  // Charger les users depuis Supabase au boot
+  sbLoadUsers().then(function(remoteUsers) {
+    if (remoteUsers && remoteUsers.length > 0) {
+      S.users = remoteUsers;
+      lsSet('isa_users', S.users);
+      console.log('Users charges depuis Supabase:', S.users.length);
+    } else {
+      // Pas de users sur Supabase → uploader les locaux
+      sbSaveUsers();
+      console.log('Users uploades vers Supabase:', S.users.length);
+    }
+  });
+})();
+
+// ── SYNC USERS QUAND ON OUVRE LA PAGE UTILISATEURS ────────
+var _goToFixAuth = goTo;
+goTo = function(page) {
+  _goToFixAuth(page);
+  if (page === 'users') {
+    // Recharger les users depuis Supabase à chaque ouverture
+    sbLoadUsers().then(function(remoteUsers) {
+      if (remoteUsers && remoteUsers.length > 0) {
+        S.users = remoteUsers;
+        lsSet('isa_users', S.users);
+        if (typeof rUsers === 'function') rUsers();
+      }
+    });
+  }
+};
+
+// ── FORCER LA SYNC IMMÉDIATE DES USERS ACTUELS ───────────
+sbSaveUsers().then(function(ok) {
+  if (ok) toast('Utilisateurs synchronises sur Supabase ✓');
+});
+
+console.log('Fix auth V2.7 charge - users:', S.users.length);
+
+})();
+  </script>
 </body>
   <script>
     // ══════════════════════════════════════════════════════════

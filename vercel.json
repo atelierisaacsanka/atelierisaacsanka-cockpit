@@ -10,6 +10,7 @@
     { "src": "/api/vapid-public", "dest": "/api/vapid-public.js" },
     { "src": "/api/subscribe", "dest": "/api/subscribe.js" },
     { "src": "/api/notify", "dest": "/api/notify.js" },
+    { "src": "/api/send-invite", "dest": "/api/send-invite.js" },
     {
       "src": "/sw.js",
       "dest": "/sw.js",

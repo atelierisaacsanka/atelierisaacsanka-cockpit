@@ -2041,5 +2041,11 @@ var addDate=document.getElementById('add-date');if(addDate)addDate.value=today()
   if(saved&&saved.id){CURRENT_USER=saved;onLoginSuccess();loadFromSupabase();}
 })();
 </script>
+  <script>
+document.querySelectorAll('.nav-btn[data-page], .mnav-btn[data-page]').forEach(function(btn) {
+  var page = btn.getAttribute('data-page');
+  btn.onclick = function() { goTo(page); };
+});
+</script>
 </body>
 </html>
